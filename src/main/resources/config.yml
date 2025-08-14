@@ -1,0 +1,6 @@
+cooldown: 7
+lockpick-range: 8
+lockpick: m.tools.lockpick
+
+traits:
+    - thief
