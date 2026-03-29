@@ -1,5 +1,21 @@
 package net.tfminecraft.thievery.manager;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -10,10 +26,10 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.Container;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
+import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -23,6 +39,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -43,23 +60,7 @@ import net.tfminecraft.RPCharacters.Objects.Trait.Trait;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.data.ContainerData;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import net.tfminecraft.thievery.data.LockState;
 
 public class ContainerManager implements Listener {
 
@@ -175,13 +176,67 @@ public class ContainerManager implements Listener {
 
         ContainerData data = containerDataManager.loadContainerData(location);
 
-        // Alert if broken by someone who doesn't own it
-        if (!data.owns(breaker)) {
+        if (block.getState() instanceof Chest chest) {
+            Inventory inventory = chest.getInventory();
+            if (inventory instanceof DoubleChestInventory doubleChestInventory) {
+                DoubleChest doubleChest = (DoubleChest) doubleChestInventory.getHolder();
+                if (doubleChest != null) {
+                    if (!(doubleChest.getLeftSide() instanceof Chest leftChest)) return;
+                    if (!(doubleChest.getRightSide() instanceof Chest rightChest)) return;
+
+                    ContainerData leftData = containerDataManager.loadContainerData(leftChest.getLocation());
+                    ContainerData rightData = containerDataManager.loadContainerData(rightChest.getLocation());
+                    boolean hasOwner = leftData.getOwner() != null || rightData.getOwner() != null;
+
+                    if (hasOwner && (!leftData.canAccess(breaker) || !rightData.canAccess(breaker))) {
+                        event.setCancelled(true);
+                        breaker.sendMessage(ChatColor.RED + "You do not have access to break this container.");
+                        alertAdminsContainerBreak(breaker, location);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Prevent break if player cannot access this container
+        if (!data.canAccess(breaker)) {
+            event.setCancelled(true);
+            breaker.sendMessage(ChatColor.RED + "You do not have access to break this container.");
             alertAdminsContainerBreak(breaker, location);
+            return;
         }
 
         // Delete container data file
-        boolean deleted = containerDataManager.deleteContainerData(location);
+        containerDataManager.deleteContainerData(location);
+    }
+
+    @EventHandler
+    public void onInventoryMoveItem(InventoryMoveItemEvent event) {
+        Inventory source = event.getSource();
+        InventoryHolder sourceHolder = source.getHolder();
+
+        if (sourceHolder instanceof DoubleChest doubleChest) {
+            if (!(doubleChest.getLeftSide() instanceof Chest leftChest)) return;
+            if (!(doubleChest.getRightSide() instanceof Chest rightChest)) return;
+
+            ContainerData leftData = containerDataManager.loadContainerData(leftChest.getLocation());
+            ContainerData rightData = containerDataManager.loadContainerData(rightChest.getLocation());
+
+            boolean leftLocked = leftData.getOwner() != null && leftData.getLockState() != LockState.PUBLIC;
+            boolean rightLocked = rightData.getOwner() != null && rightData.getLockState() != LockState.PUBLIC;
+            if (leftLocked || rightLocked) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
+        if (sourceHolder instanceof Container container) {
+            ContainerData data = containerDataManager.loadContainerData(container.getBlock().getLocation());
+            boolean locked = data.getOwner() != null && data.getLockState() != LockState.PUBLIC;
+            if (locked) {
+                event.setCancelled(true);
+            }
+        }
     }
 
 
@@ -211,7 +266,7 @@ public class ContainerManager implements Listener {
 
             if (data.getOwner() == null) return;
 
-            if (!data.owns(player)) {
+            if (!data.canAccess(player)) {
                 long now = System.currentTimeMillis();
                 long last = lastAlertTimestamps.getOrDefault(player.getUniqueId(), 0L);
 
@@ -237,22 +292,41 @@ public class ContainerManager implements Listener {
 
             Location mainLoc = left.getBlock().getLocation();
             ContainerData mainData = containerDataManager.loadContainerData(mainLoc);
+            Location rightLoc = right.getBlock().getLocation();
+            ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
+
+            boolean hasOwner = mainData.getOwner() != null || rightData.getOwner() != null;
+            if (hasOwner && (!mainData.canAccess(player) || !rightData.canAccess(player))) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "You do not have access to this container.");
+                return;
+            }
 
             if (mainData.getOwner() == null) {
-                mainData.setOwner(player.getUniqueId());
+                if (rightData.getOwner() != null) {
+                    mainData.setOwner(rightData.getOwner());
+                    mainData.setLockState(rightData.getLockState());
+                } else {
+                    mainData.setOwner(player.getUniqueId());
+                }
             }
 
             mainData.updateAccess(player.getUniqueId(), today);
             containerDataManager.saveContainerData(mainData);
 
-            Location rightLoc = right.getBlock().getLocation();
-            ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
             rightData.setOwner(mainData.getOwner());
+            rightData.setLockState(mainData.getLockState());
             rightData.updateAccess(player.getUniqueId(), today);
             containerDataManager.saveContainerData(rightData);
 
         } else if (holder instanceof Container container) {
             Location location = container.getBlock().getLocation();
+            ContainerData data = containerDataManager.loadContainerData(location);
+            if (data.getOwner() != null && !data.canAccess(player)) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "You do not have access to this container.");
+                return;
+            }
             handleContainerAccess(location, player, today); // only sets date
         }
     }
@@ -281,6 +355,109 @@ public class ContainerManager implements Listener {
         Location location = block.getLocation();
         ContainerData data = new ContainerData(location, event.getPlayer().getUniqueId());
         containerDataManager.saveContainerData(data);
+    }
+
+    @EventHandler
+    public void onShiftLeftClickContainer(PlayerInteractEvent event) {
+        if (event.getAction() != Action.LEFT_CLICK_BLOCK) return;
+        if (!event.getPlayer().isSneaking()) return;
+        if (event.getClickedBlock() == null) return;
+        if (!(event.getClickedBlock().getState() instanceof Container container)) return;
+
+        Player player = event.getPlayer();
+        event.setCancelled(true);
+
+        Inventory inventory = container.getInventory();
+        UUID playerId = player.getUniqueId();
+
+        if (inventory instanceof DoubleChestInventory doubleChestInventory) {
+            DoubleChest doubleChest = (DoubleChest) doubleChestInventory.getHolder();
+            if (doubleChest == null) return;
+
+            Location leftLoc = ((Chest) doubleChest.getLeftSide()).getLocation();
+            Location rightLoc = ((Chest) doubleChest.getRightSide()).getLocation();
+
+            ContainerData leftData = containerDataManager.loadContainerData(leftLoc);
+            ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
+
+            UUID leftOwner = leftData.getOwner();
+            UUID rightOwner = rightData.getOwner();
+            boolean ownsDoubleChest = playerId.equals(leftOwner) || playerId.equals(rightOwner);
+            if (!ownsDoubleChest) {
+                player.sendMessage(ChatColor.RED + "You can only change the lock state on containers you own.");
+                return;
+            }
+
+            LockState nextState = leftData.rotateLockState();
+            rightData.setLockState(nextState);
+
+            containerDataManager.saveContainerData(leftData);
+            containerDataManager.saveContainerData(rightData);
+
+            notifyLockStateChange(player, nextState);
+            return;
+        }
+
+        Location location = container.getBlock().getLocation();
+        ContainerData data = containerDataManager.loadContainerData(location);
+
+        if (!playerId.equals(data.getOwner())) {
+            player.sendMessage(ChatColor.RED + "You can only change the lock state on containers you own.");
+            return;
+        }
+
+        LockState nextState = data.rotateLockState();
+        containerDataManager.saveContainerData(data);
+        notifyLockStateChange(player, nextState);
+    }
+
+    @EventHandler
+    public void onContainerRightClickAccessCheck(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getClickedBlock() == null) return;
+        if (!(event.getClickedBlock().getState() instanceof Container container)) return;
+
+        Player player = event.getPlayer();
+        ItemStack heldItem = player.getInventory().getItemInMainHand();
+        if (TLibs.getItemAPI().getChecker().checkItemWithPath(heldItem, Cache.lockpick)) {
+            return;
+        }
+
+        Inventory inventory = container.getInventory();
+        if (inventory instanceof DoubleChestInventory doubleChestInventory) {
+            DoubleChest doubleChest = (DoubleChest) doubleChestInventory.getHolder();
+            if (doubleChest == null) return;
+
+            Location leftLoc = ((Chest) doubleChest.getLeftSide()).getLocation();
+            Location rightLoc = ((Chest) doubleChest.getRightSide()).getLocation();
+            ContainerData leftData = containerDataManager.loadContainerData(leftLoc);
+            ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
+
+            boolean hasOwner = leftData.getOwner() != null || rightData.getOwner() != null;
+            if (hasOwner && (!leftData.canAccess(player) || !rightData.canAccess(player))) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "You do not have access to this container.");
+            }
+            return;
+        }
+
+        Location location = container.getBlock().getLocation();
+        ContainerData data = containerDataManager.loadContainerData(location);
+        if (data.getOwner() != null && !data.canAccess(player)) {
+            event.setCancelled(true);
+            player.sendMessage(ChatColor.RED + "You do not have access to this container.");
+        }
+    }
+
+    private void notifyLockStateChange(Player player, LockState lockState) {
+        String displayState = formatLockState(lockState);
+        player.sendTitle(ChatColor.GOLD + "Lock State", ChatColor.YELLOW + displayState, 5, 30, 10);
+        player.playSound(player.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_OPEN, 1.0f, 1.0f);
+    }
+
+    private String formatLockState(LockState lockState) {
+        String value = lockState.name().toLowerCase();
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
     }
 
     private void showParticleOutline(Player p, Location loc, Particle particle) {

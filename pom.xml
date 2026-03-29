@@ -26,56 +26,56 @@
             <artifactId>Luckperms</artifactId>
             <version>5.4</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/api-5.4.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/api-5.4.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/gson-2.10.1.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/gson-2.10.1.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.20.2-R0.1-SNAPSHOT</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/spigot-api-1.20.2-R0.1-SNAPSHOT.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/spigot-api-1.20.2-R0.1-SNAPSHOT.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MMOCore</artifactId>
-            <version>1.11.3</version>
+            <version>1.13.1</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/MMOCore-1.11.3.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/MMOCore-1.11.3.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>TLibs</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/TFMC/TLibs/TLibs.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/TLibs.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>RPCharacters</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/TFMC/RPCharacters/rpcharacters-1.0.3.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/rpcharacters-1.1.4.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>Bungeecord</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/Bungeecord.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/Bungeecord.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>simplefactions</artifactId>
             <version>2.2.7</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/TFMC/SimpleFactions/simplefactions-2.2.7.jar</systemPath>
+            <systemPath>C:/Users/vbdre/Documents/Reference Libs/simplefactions-2.8.6.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>net.coreprotect</groupId>
@@ -97,7 +97,7 @@
                         <configuration>
                             <target>
                                 <copy file="${project.build.directory}/${project.build.finalName}.jar"
-                                    tofile="D:\Dokumenter\My Plugins\TFMC\Thievery\${project.build.finalName}.jar"/>
+                                    tofile="C:\Users\vbdre\Documents\Output\${project.build.finalName}.jar"/>
                             </target>
                         </configuration>
                     </execution>

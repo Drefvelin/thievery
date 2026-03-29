@@ -1,19 +1,23 @@
 package net.tfminecraft.thievery.manager;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import net.tfminecraft.thievery.data.ContainerData;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 
-import java.io.*;
-import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import com.google.gson.Gson;
+
+import net.tfminecraft.thievery.data.ContainerData;
+import net.tfminecraft.thievery.data.LockState;
 
 public class ContainerDataManager {
 
@@ -22,6 +26,7 @@ public class ContainerDataManager {
 
     private static class ContainerDataJson {
         UUID owner;
+        LockState lockState = LockState.PRIVATE;
         Map<UUID, String> accessMap = new HashMap<>();
     }
 
@@ -49,6 +54,7 @@ public class ContainerDataManager {
             ContainerData data = new ContainerData(location);
             data.setOwner(json.owner);
             data.setAccessMap(json.accessMap);
+            data.setLockState(json.lockState);
             return data;
         } catch (IOException e) {
             Bukkit.getLogger().warning("Failed to load container data for " + location + ": " + e.getMessage());
@@ -64,6 +70,7 @@ public class ContainerDataManager {
         try (Writer writer = new FileWriter(file)) {
             ContainerDataJson json = new ContainerDataJson();
             json.owner = data.getOwner();
+            json.lockState = data.getLockState();
             json.accessMap = data.getAccessMap();
             gson.toJson(json, writer);
         } catch (IOException e) {
