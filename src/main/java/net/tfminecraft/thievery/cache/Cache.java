@@ -5,7 +5,6 @@ import java.util.List;
 
 public class Cache {
     public static int cooldown;
-    public static String lockpick;
     public static int radius;
 
     public static boolean coreProtect = false;
@@ -17,4 +16,7 @@ public class Cache {
 
     public static double minBreak;
     public static double maxBreak;
+
+    public static List<String> keyItems = new ArrayList<>();
+    public static List<String> lockPickItems = new ArrayList<>();
 }

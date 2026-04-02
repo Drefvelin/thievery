@@ -51,6 +51,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import me.Plugins.SimpleFactions.Guild.Guild;
+import me.Plugins.SimpleFactions.Managers.FactionManager;
 import me.Plugins.TLibs.TLibs;
 import net.Indyuce.mmocore.api.player.PlayerData;
 import net.Indyuce.mmocore.api.player.attribute.PlayerAttributes.AttributeInstance;
@@ -61,6 +63,8 @@ import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.data.ContainerData;
 import net.tfminecraft.thievery.data.LockState;
+import net.tfminecraft.util.GuildChecker;
+import net.tfminecraft.util.Keys;
 
 public class ContainerManager implements Listener {
 
@@ -284,7 +288,6 @@ public class ContainerManager implements Listener {
         if (!(event.getPlayer() instanceof Player player)) return;
 
         InventoryHolder holder = event.getInventory().getHolder();
-        String today = dateFormat.format(new Date());
 
         if (holder instanceof DoubleChest doubleChest) {
             Container left = (Container) doubleChest.getLeftSide();
@@ -311,12 +314,10 @@ public class ContainerManager implements Listener {
                 }
             }
 
-            mainData.updateAccess(player.getUniqueId(), today);
             containerDataManager.saveContainerData(mainData);
 
             rightData.setOwner(mainData.getOwner());
             rightData.setLockState(mainData.getLockState());
-            rightData.updateAccess(player.getUniqueId(), today);
             containerDataManager.saveContainerData(rightData);
 
         } else if (holder instanceof Container container) {
@@ -327,21 +328,18 @@ public class ContainerManager implements Listener {
                 player.sendMessage(ChatColor.RED + "You do not have access to this container.");
                 return;
             }
-            handleContainerAccess(location, player, today); // only sets date
+            handleContainerAccess(location, player);
         }
     }
 
-    private void handleContainerAccess(Location location, Player player, String today) {
+    private void handleContainerAccess(Location location, Player player) {
         ContainerData data = containerDataManager.loadContainerData(location);
 
         // Assign owner if not set
         if (data.getOwner() == null) {
             data.setOwner(player.getUniqueId());
+            containerDataManager.saveContainerData(data);
         }
-
-        // Track access
-        data.updateAccess(player.getUniqueId(), today);
-        containerDataManager.saveContainerData(data);
     }
 
     @EventHandler
@@ -355,6 +353,8 @@ public class ContainerManager implements Listener {
         Location location = block.getLocation();
         ContainerData data = new ContainerData(location, event.getPlayer().getUniqueId());
         containerDataManager.saveContainerData(data);
+        String displayState = formatLockState(data.getLockState());
+        event.getPlayer().sendTitle(ChatColor.GOLD + "Lock State", ChatColor.YELLOW + displayState, 5, 30, 10);
     }
 
     @EventHandler
@@ -419,7 +419,7 @@ public class ContainerManager implements Listener {
 
         Player player = event.getPlayer();
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        if (TLibs.getItemAPI().getChecker().checkItemWithPath(heldItem, Cache.lockpick)) {
+        if (isLockpickItem(heldItem)) {
             return;
         }
 
@@ -556,7 +556,7 @@ public class ContainerManager implements Listener {
         Player player = event.getPlayer();
         // Only allow if player is holding a lockpick item
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        if(!TLibs.getItemAPI().getChecker().checkItemWithPath(heldItem, Cache.lockpick)) return;
+        if (!isLockpickItem(heldItem)) return;
 
         // Prevent opening chest normally
         event.setCancelled(true);
@@ -576,7 +576,54 @@ public class ContainerManager implements Listener {
             }
         }
 
+        // Only allow lockpicking containers the player cannot already access
+        Block clickedBlock = event.getClickedBlock();
+        Inventory blockInv = ((Container) clickedBlock.getState()).getInventory();
+        if (blockInv instanceof DoubleChestInventory doubleInv) {
+            DoubleChest doubleChest = (DoubleChest) doubleInv.getHolder();
+            if (doubleChest != null) {
+                Location leftLoc = ((Chest) doubleChest.getLeftSide()).getLocation();
+                Location rightLoc = ((Chest) doubleChest.getRightSide()).getLocation();
+                ContainerData leftData = containerDataManager.loadContainerData(leftLoc);
+                ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
+                if (leftData.canAccess(player) && rightData.canAccess(player)) {
+                    player.sendMessage(ChatColor.RED + "You already have access to this container.");
+                    return;
+                }
+            }
+        } else {
+            ContainerData data = containerDataManager.loadContainerData(clickedBlock.getLocation());
+            if (data.canAccess(player)) {
+                player.sendMessage(ChatColor.RED + "You already have access to this container.");
+                return;
+            }
+        }
+
+        var ownerUUID = getContainerOwnerUUID(clickedBlock);
+        GuildChecker.LockpickAccessResult access = GuildChecker.checkLockpickAccess(ownerUUID);
+        if (access.type == GuildChecker.LockpickAccessResult.Type.DENY) {
+            player.sendMessage(ChatColor.RED + access.message);
+            return;
+        }
+        if (access.type == GuildChecker.LockpickAccessResult.Type.WARN) {
+            player.sendMessage(ChatColor.YELLOW + access.message);
+        }
+
         lockpickChest(event); // proceed to start the system
+    }
+
+    private UUID getContainerOwnerUUID(Block block) {
+        Inventory inv = ((Container) block.getState()).getInventory();
+        if (inv instanceof DoubleChestInventory doubleInv) {
+            DoubleChest dc = (DoubleChest) doubleInv.getHolder();
+            if (dc != null) {
+                ContainerData left = containerDataManager.loadContainerData(((Chest) dc.getLeftSide()).getLocation());
+                if (left.getOwner() != null) return left.getOwner();
+                ContainerData right = containerDataManager.loadContainerData(((Chest) dc.getRightSide()).getLocation());
+                return right.getOwner();
+            }
+        }
+        return containerDataManager.loadContainerData(block.getLocation()).getOwner();
     }
 
     @EventHandler
@@ -613,7 +660,7 @@ public class ContainerManager implements Listener {
         ContainerData data = containerDataManager.loadContainerData(chestLoc);
         UUID playerId = p.getUniqueId();
 
-        String lastAccessDate = data.getLastAccess(playerId);
+        String lastAccessDate = getMostRecentGuildAccess(data, p);
         if (lastAccessDate != null) {
             try {
                 Date lastAccess = dateFormat.parse(lastAccessDate); // same format as used earlier
@@ -680,17 +727,21 @@ public class ContainerManager implements Listener {
             start = false;
         }
 
-        AttributeInstance dexterityAttr = PlayerData.get(p.getUniqueId()).getAttributes().getInstance("dexterity");
-        int dexterity = dexterityAttr.getTotal(); // dexterity ranges from 0 to 40
+        AttributeInstance dexterityAttr = PlayerData.get(p.getUniqueId()).getAttributes().getInstance(net.tfminecraft.thievery.cache.Parameters.lockpickAttribute);
+        int dexterity = dexterityAttr.getTotal();
+
+        double lockpickStrength = getLockpickStrength(p.getInventory().getItemInMainHand());
 
         // linear interp for each one
         double minSuccess = Cache.minSuccess;
         double maxSuccess = Cache.maxSuccess;
-        double lockpickSuccessRate = minSuccess + ((maxSuccess - minSuccess) * dexterity / 40.0);
+        double lockpickSuccessRate = Math.min(1.0, minSuccess + ((maxSuccess - minSuccess) * dexterity / 40.0)
+                + lockpickStrength * net.tfminecraft.thievery.cache.Parameters.chestStrengthSuccessBonus);
 
         double minBreak = Cache.minBreak;
         double maxBreak = Cache.maxBreak;
-        double lockpickBreakChance = maxBreak - ((maxBreak - minBreak) * dexterity / 40.0);
+        double lockpickBreakChance = Math.max(0.0, maxBreak - ((maxBreak - minBreak) * dexterity / 40.0)
+                - lockpickStrength * net.tfminecraft.thievery.cache.Parameters.chestStrengthBreakReduction);
 
         long minDelay = 5L;
         long maxDelay = 20L;
@@ -826,7 +877,7 @@ public class ContainerManager implements Listener {
                 if (chestBlock.getState() instanceof Container container) {
                     Inventory realInv = container.getInventory();
                     if(Cache.coreProtect) {
-                        Thievery.getCoreProtect().logContainerTransaction(player.getName(), chestBlock.getLocation());
+                        Thievery.getCoreProtect().logContainerTransaction(player.getName()+"_lockpick", chestBlock.getLocation());
                     }
                     realInv.setItem(slot, null);
                 }
@@ -838,6 +889,47 @@ public class ContainerManager implements Listener {
             // Prevent putting stuff in from player inventory
             e.setCancelled(true);
         }
+    }
+
+    private double getLockpickStrength(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return net.tfminecraft.thievery.cache.Parameters.defaultLockpickStrength;
+        ItemMeta meta = item.getItemMeta();
+        if (!meta.getPersistentDataContainer().has(Keys.lockpickStrength, PersistentDataType.DOUBLE))
+            return net.tfminecraft.thievery.cache.Parameters.defaultLockpickStrength;
+        return meta.getPersistentDataContainer().get(Keys.lockpickStrength, PersistentDataType.DOUBLE);
+    }
+
+    private boolean isLockpickItem(ItemStack item) {
+        if (item == null || item.getType().isAir()) return false;
+        for (String path : Cache.lockPickItems) {
+            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, path)) return true;
+        }
+        return false;
+    }
+
+    private String getMostRecentGuildAccess(ContainerData data, Player player) {
+        String best = data.getLastAccess(player.getUniqueId());
+        Guild guild = FactionManager.getGuildByMember(player.getName());
+        if (guild == null) return best;
+        Date bestDate = null;
+        try { if (best != null) bestDate = dateFormat.parse(best); } catch (ParseException ignored) {}
+        for (String memberName : guild.getMembers()) {
+            if (!memberName.equalsIgnoreCase(player.getName())) {
+            } else {
+                continue;
+            }
+            var member = Bukkit.getOfflinePlayer(memberName);
+            String access = data.getLastAccess(member.getUniqueId());
+            if (access == null) continue;
+            try {
+                Date d = dateFormat.parse(access);
+                if (bestDate == null || d.after(bestDate)) {
+                    bestDate = d;
+                    best = access;
+                }
+            } catch (ParseException ignored) {}
+        }
+        return best;
     }
 
     private boolean isDummyPane(ItemStack item) {
