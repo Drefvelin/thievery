@@ -12,11 +12,13 @@ import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.command.CommandManager;
 import net.tfminecraft.thievery.loader.ConfigLoader;
 import net.tfminecraft.thievery.manager.ContainerManager;
+import net.tfminecraft.thievery.manager.DoorManager;
 
 public class Thievery extends JavaPlugin {
 
     private static Thievery instance;
     private ContainerManager containerManager;
+    private DoorManager doorManager;
     private final ConfigLoader configLoader = new ConfigLoader();
 
     @Override
@@ -29,8 +31,11 @@ public class Thievery extends JavaPlugin {
         getCommand("thievery").setExecutor(new CommandManager(containerManager));
         getCommand("thievery").setTabCompleter(new CommandManager(containerManager));
 
+        doorManager = new DoorManager();
+
         // Register events
         getServer().getPluginManager().registerEvents(containerManager, this);
+        getServer().getPluginManager().registerEvents(doorManager, this);
         // Enable feedback for all currently online admins
         Bukkit.getOnlinePlayers().forEach(player -> {
             if (player.hasPermission("thievery.admin")) {

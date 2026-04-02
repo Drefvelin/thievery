@@ -4,3 +4,50 @@ lockpick: m.tools.lockpick
 
 traits:
     - thief
+
+# Door lockpicking parameters
+lockpicking:
+  # Default strength assigned to a key with no PDC tag (0-1)
+  default-key-strength: 1.0
+  # Default strength assigned to a lockpick with no PDC tag (0-1)
+  default-lockpick-strength: 0.0
+  # Maximum fraction of lock strength a lockpick can negate (0-1)
+  lockpick-max-reduction: 0.5
+  # Milliseconds of debuff applied on fail/break
+  fail-cooldown-ms: 60000
+
+  bar:
+    # Total number of slots in the minigame bar
+    length: 20
+    # Success slot count at lock strength 0 (easiest)
+    max-success-slots: 3
+    # Break slot count at lock strength 0 (floor)
+    min-break-slots: 3
+    # Break slot count at lock strength 1 (ceiling)
+    max-break-slots: 19
+    # Bar speed in slots per tick at dexterity 0
+    base-speed: 2.5
+    # Speed reduction per dexterity level (fraction of base speed)
+    dex-speed-reduction-per-level: 0.02
+    # Minimum bar speed regardless of dexterity
+    min-speed: 0.4
+    # Random speed jitter per tick as a fraction of base speed
+    speed-jitter-fraction: 0.3
+    # Probability per tick of random direction flip
+    random-flip-chance: 0.03
+
+  # MMOCore attribute ID used for lockpick speed/success scaling (e.g. dexterity, roguery)
+  attribute: dexterity
+
+  # Chest lockpicking rates
+  chest:
+    # Item reveal success rate at dexterity 0 (min) and max dexterity (max)
+    success-rate-min: 0.4
+    success-rate-max: 0.9
+    # Lockpick break chance per slot at dexterity 0 (max) and max dexterity (min)
+    break-chance-min: 0.01
+    break-chance-max: 0.15
+    # Bonus to success rate when using a full-strength (1.0) lockpick
+    strength-success-bonus: 0.2
+    # Reduction to break chance when using a full-strength (1.0) lockpick
+    strength-break-reduction: 0.08
