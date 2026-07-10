@@ -5,7 +5,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -49,20 +47,28 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import me.Plugins.SimpleFactions.Guild.Guild;
 import me.Plugins.SimpleFactions.Managers.FactionManager;
-import me.Plugins.TLibs.TLibs;
-import net.Indyuce.mmocore.api.player.PlayerData;
-import net.Indyuce.mmocore.api.player.attribute.PlayerAttributes.AttributeInstance;
 import net.tfminecraft.RPCharacters.Managers.PlayerManager;
 import net.tfminecraft.RPCharacters.Objects.RPCharacter;
 import net.tfminecraft.RPCharacters.Objects.Trait.Trait;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.data.ChestLockpickSession;
 import net.tfminecraft.thievery.data.ContainerData;
 import net.tfminecraft.thievery.data.LockState;
+import net.tfminecraft.thievery.data.LockpickDefinition;
+import net.tfminecraft.thievery.data.RiskSource;
+import net.tfminecraft.thievery.database.Database;
+import net.tfminecraft.thievery.util.BundleHandler;
+import net.tfminecraft.thievery.util.CategoryResolver;
+import net.tfminecraft.thievery.util.ClueChecker;
+import net.tfminecraft.thievery.util.ClueDropper;
+import net.tfminecraft.thievery.util.DexterityHelper;
+import net.tfminecraft.thievery.util.RiskCalculator;
+import net.tfminecraft.thievery.util.TargetKeyResolver;
+import net.tfminecraft.thievery.util.ToolResolver;
 import net.tfminecraft.util.GuildChecker;
 import net.tfminecraft.util.Keys;
 
@@ -74,9 +80,7 @@ public class ContainerManager implements Listener {
     private final Map<UUID, Boolean> feedbackMap = new HashMap<>();
     private final Map<UUID, Long> lastAlertTimestamps = new HashMap<>();
 
-    private final Map<UUID, Block> lockpickingSessions = new HashMap<>();
-    private final Map<UUID, BukkitRunnable> activeLockpickingTasks = new HashMap<>();
-    private final Map<UUID, List<Integer>> lockpickingSlotOrders = new HashMap<>();
+    private final Map<UUID, ChestLockpickSession> lockpickingSessions = new HashMap<>();
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
@@ -419,7 +423,7 @@ public class ContainerManager implements Listener {
 
         Player player = event.getPlayer();
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        if (isLockpickItem(heldItem)) {
+        if (ToolResolver.isLockpick(heldItem)) {
             return;
         }
 
@@ -475,24 +479,27 @@ public class ContainerManager implements Listener {
         // Top and bottom outlines
         for (double yOffset : List.of(0.0, 1.0)) {
             for (double i = min; i <= max; i += spacing) {
-                p.spawnParticle(Particle.REDSTONE, base.clone().add(i, yOffset, min), 1, 0, 0, 0, 0, red);
-                p.spawnParticle(Particle.REDSTONE, base.clone().add(i, yOffset, max), 1, 0, 0, 0, 0, red);
-                p.spawnParticle(Particle.REDSTONE, base.clone().add(min, yOffset, i), 1, 0, 0, 0, 0, red);
-                p.spawnParticle(Particle.REDSTONE, base.clone().add(max, yOffset, i), 1, 0, 0, 0, 0, red);
+                p.spawnParticle(Particle.DUST, base.clone().add(i, yOffset, min), 1, 0, 0, 0, 0, red);
+                p.spawnParticle(Particle.DUST, base.clone().add(i, yOffset, max), 1, 0, 0, 0, 0, red);
+                p.spawnParticle(Particle.DUST, base.clone().add(min, yOffset, i), 1, 0, 0, 0, 0, red);
+                p.spawnParticle(Particle.DUST, base.clone().add(max, yOffset, i), 1, 0, 0, 0, 0, red);
             }
         }
 
         // Vertical edges
         for (double y = min; y <= max; y += spacing) {
-            p.spawnParticle(Particle.REDSTONE, base.clone().add(min, y, min), 1, 0, 0, 0, 0, red);
-            p.spawnParticle(Particle.REDSTONE, base.clone().add(min, y, max), 1, 0, 0, 0, 0, red);
-            p.spawnParticle(Particle.REDSTONE, base.clone().add(max, y, min), 1, 0, 0, 0, 0, red);
-            p.spawnParticle(Particle.REDSTONE, base.clone().add(max, y, max), 1, 0, 0, 0, 0, red);
+            p.spawnParticle(Particle.DUST, base.clone().add(min, y, min), 1, 0, 0, 0, 0, red);
+            p.spawnParticle(Particle.DUST, base.clone().add(min, y, max), 1, 0, 0, 0, 0, red);
+            p.spawnParticle(Particle.DUST, base.clone().add(max, y, min), 1, 0, 0, 0, 0, red);
+            p.spawnParticle(Particle.DUST, base.clone().add(max, y, max), 1, 0, 0, 0, 0, red);
         }
     }
 
     private void pingNearbyContainers(Player player, Location origin, String date) {
         int radius = Cache.radius;
+        if (radius < 0) {
+            return;
+        }
         UUID uuid = player.getUniqueId();
 
         Set<Location> alreadyPinged = new HashSet<>();
@@ -531,8 +538,8 @@ public class ContainerManager implements Listener {
 
                         containerDataManager.saveContainerData(leftData);
                         containerDataManager.saveContainerData(rightData);
-                        showParticleOutline(player, leftLoc, Particle.REDSTONE);
-                        showParticleOutline(player, rightLoc, Particle.REDSTONE);
+                        showParticleOutline(player, leftLoc, Particle.DUST);
+                        showParticleOutline(player, rightLoc, Particle.DUST);
                     } else {
                         // Single container
                         alreadyPinged.add(checkLoc);
@@ -540,7 +547,7 @@ public class ContainerManager implements Listener {
                         ContainerData data = containerDataManager.loadContainerData(checkLoc);
                         data.updateAccess(uuid, date);
                         containerDataManager.saveContainerData(data);
-                        showParticleOutline(player, checkLoc, Particle.REDSTONE);
+                        showParticleOutline(player, checkLoc, Particle.DUST);
                     }
                 }
             }
@@ -556,7 +563,7 @@ public class ContainerManager implements Listener {
         Player player = event.getPlayer();
         // Only allow if player is holding a lockpick item
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        if (!isLockpickItem(heldItem)) return;
+        if (!ToolResolver.isLockpick(heldItem)) return;
 
         // Prevent opening chest normally
         event.setCancelled(true);
@@ -609,6 +616,11 @@ public class ContainerManager implements Listener {
             player.sendMessage(ChatColor.YELLOW + access.message);
         }
 
+        if (!ClueChecker.hasEnoughClues(player)) {
+            ClueChecker.sendInsufficientCluesMessage(player);
+            return;
+        }
+
         lockpickChest(event); // proceed to start the system
     }
 
@@ -628,22 +640,7 @@ public class ContainerManager implements Listener {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        Player player = (Player) event.getPlayer();
-        UUID playerId = player.getUniqueId();
-
-        // Only cancel if it's an active lockpicking session
-        if (!lockpickingSessions.containsKey(playerId)) return;
-
-        // Cancel the task if it's running
-        BukkitRunnable task = activeLockpickingTasks.remove(playerId);
-        if (task != null) {
-            player.sendMessage(ChatColor.GRAY + "You stopped lockpicking.");
-            task.cancel();
-        }
-
-        // Remove session data
-        lockpickingSessions.remove(playerId);
-        lockpickingSlotOrders.remove(playerId);
+        lockpickingSessions.remove(event.getPlayer().getUniqueId());
     }
 
     private void lockpickChest(PlayerInteractEvent e) {
@@ -652,10 +649,17 @@ public class ContainerManager implements Listener {
 
         e.setCancelled(true);
 
-        if (lockpickingSessions.containsValue(b)) {
-            p.sendMessage(ChatColor.DARK_RED + "Someone is already lockpicking this chest!");
-            return;
+        for (ChestLockpickSession active : lockpickingSessions.values()) {
+            if (active.getChestBlock().equals(b)) {
+                p.sendMessage(ChatColor.DARK_RED + "Someone is already lockpicking this chest!");
+                return;
+            }
         }
+
+        ItemStack heldLockpick = p.getInventory().getItemInMainHand();
+        LockpickDefinition lockpickDef = ToolResolver.resolveLockpick(heldLockpick);
+        if (lockpickDef == null) return;
+
         Location chestLoc = b.getLocation();
         ContainerData data = containerDataManager.loadContainerData(chestLoc);
         UUID playerId = p.getUniqueId();
@@ -663,7 +667,7 @@ public class ContainerManager implements Listener {
         String lastAccessDate = getMostRecentGuildAccess(data, p);
         if (lastAccessDate != null) {
             try {
-                Date lastAccess = dateFormat.parse(lastAccessDate); // same format as used earlier
+                Date lastAccess = dateFormat.parse(lastAccessDate);
                 Duration duration = Duration.between(
                     lastAccess.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().atStartOfDay(),
                     LocalDate.now().atStartOfDay(ZoneId.systemDefault())
@@ -673,7 +677,6 @@ public class ContainerManager implements Listener {
                 long daysRemaining = Cache.cooldown - daysSince;
 
                 if (daysRemaining > 0) {
-                    // Reconstruct full duration for exact time left
                     long millisElapsed = System.currentTimeMillis() - lastAccess.getTime();
                     long totalCooldownMillis = Cache.cooldown * 24L * 60L * 60L * 1000L;
                     long millisRemaining = totalCooldownMillis - millisElapsed;
@@ -689,222 +692,412 @@ public class ContainerManager implements Listener {
                 }
             } catch (ParseException ex) {
                 ex.printStackTrace();
-                // allow lockpick if there's a parsing error (or optionally deny)
             }
-        }                         
-
-        p.sendMessage(ChatColor.ITALIC + "" + ChatColor.DARK_RED + "Lockpicking in progress...");
+        }
 
         BlockState state = b.getState();
         if (!(state instanceof Container container)) return;
 
         Inventory chestInv = container.getInventory();
-        int invSize = chestInv.getSize();
-        Inventory lockpickInv = Bukkit.createInventory(null, invSize, ChatColor.DARK_RED + "Lockpicking...");
+        int chestSize = chestInv.getSize();
 
+        int dexterity = DexterityHelper.getDexterity(p);
+        double successChance = ChestLockpickSession.computeSuccessChance(dexterity, lockpickDef.getStrength());
+
+        String targetKey = TargetKeyResolver.resolve(getContainerOwnerUUID(b));
+        ChestLockpickSession session = new ChestLockpickSession(b, lockpickDef, successChance, chestInv, targetKey);
+        int guiSize = chestSize + 1;
+        Inventory lockpickInv = Bukkit.createInventory(null, guiSize, ChatColor.DARK_RED + "Lockpicking...");
+
+        NamespacedKey dummyKey = new NamespacedKey(Thievery.getInstance(), "dummy");
+        ItemStack unkPane = createUnknownPane(dummyKey);
+
+        for (int chestSlot = 0; chestSlot < chestSize; chestSlot++) {
+            if (chestSlot == ChestLockpickSession.MASK_CHEST_SLOT) continue;
+            lockpickInv.setItem(ChestLockpickSession.chestSlotToGui(chestSlot), unkPane);
+        }
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(p.getUniqueId());
+        lockpickInv.setItem(ChestLockpickSession.SEARCH_GUI_SLOT,
+                createSearchButton(thiefData, dexterity, lockpickDef.getStrength()));
+
+        p.openInventory(lockpickInv);
+        p.sendMessage(ChatColor.ITALIC + "" + ChatColor.DARK_RED + "Click Search to probe the chest.");
+
+        String today = dateFormat.format(new Date());
+        pingNearbyContainers(p, b.getLocation(), today);
+        recordContainerAccess(p, b, data, playerId, today);
+
+        lockpickingSessions.put(p.getUniqueId(), session);
+    }
+
+    private void recordContainerAccess(Player player, Block b, ContainerData data, UUID playerId, String today) {
+        BlockState chestState = b.getState();
+        if (!(chestState instanceof Container chest)) return;
+
+        Inventory inventory = chest.getInventory();
+        if (inventory instanceof DoubleChestInventory doubleChestInventory) {
+            DoubleChest doubleChest = (DoubleChest) doubleChestInventory.getHolder();
+            if (doubleChest != null) {
+                Chest leftChest = (Chest) doubleChest.getLeftSide();
+                Chest rightChest = (Chest) doubleChest.getRightSide();
+
+                ContainerData leftData = containerDataManager.loadContainerData(leftChest.getLocation());
+                ContainerData rightData = containerDataManager.loadContainerData(rightChest.getLocation());
+
+                leftData.updateAccess(playerId, today);
+                rightData.updateAccess(playerId, today);
+
+                containerDataManager.saveContainerData(leftData);
+                containerDataManager.saveContainerData(rightData);
+            }
+        } else {
+            data.updateAccess(playerId, today);
+            containerDataManager.saveContainerData(data);
+        }
+    }
+
+    private void performSearch(Player player, ChestLockpickSession session, Inventory guiInv) {
+        if (!session.hasMoreSearches()) {
+            player.sendMessage(ChatColor.GRAY + "There is nothing left to search.");
+            return;
+        }
+
+        Integer chestSlot = session.pollNextChestSlot();
+        if (chestSlot == null) return;
+
+        int dexterity = DexterityHelper.getDexterity(player);
+        double lockpickStrength = session.getLockpickDef().getStrength();
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
+        thiefData.addRiskGain(dexterity, lockpickStrength, RiskSource.CHEST);
+        Database.savePlayerData(thiefData);
+        refreshSearchButton(player, session, guiInv);
 
         NamespacedKey dummyKey = new NamespacedKey(Thievery.getInstance(), "dummy");
 
-        ItemStack unkPane = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-        ItemMeta unkMeta = unkPane.getItemMeta();
-        unkMeta.setDisplayName("???");
-        unkMeta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
-        unkPane.setItemMeta(unkMeta);
-
-        ItemStack curPane = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-        ItemMeta curMeta = curPane.getItemMeta();
-        curMeta.setDisplayName("Searching");
-        curMeta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
-        curPane.setItemMeta(curMeta);
-
-        List<Integer> randomizedSlots = IntStream.range(0, invSize).boxed().collect(Collectors.toList());
-        Collections.shuffle(randomizedSlots);
-        lockpickingSlotOrders.put(p.getUniqueId(), randomizedSlots);
-
-        boolean start = true;
-        for (Integer slot : randomizedSlots) {
-            lockpickInv.setItem(slot, start ? curPane : unkPane);
-            start = false;
+        if (Math.random() >= session.getSuccessChance()) {
+            breakLockpick(player);
+            player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+            player.sendMessage(ChatColor.RED + "Your lockpick broke!");
+            lockpickingSessions.remove(player.getUniqueId());
+            player.closeInventory();
+            return;
         }
 
-        AttributeInstance dexterityAttr = PlayerData.get(p.getUniqueId()).getAttributes().getInstance(net.tfminecraft.thievery.cache.Parameters.lockpickAttribute);
-        int dexterity = dexterityAttr.getTotal();
+        player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 0.4f, 0.8f);
+        player.playSound(player.getLocation(), Sound.BLOCK_LEVER_CLICK, 0.3f, 1.2f);
 
-        double lockpickStrength = getLockpickStrength(p.getInventory().getItemInMainHand());
+        Block chestBlock = session.getChestBlock();
+        if (!(chestBlock.getState() instanceof Container container)) {
+            lockpickingSessions.remove(player.getUniqueId());
+            player.closeInventory();
+            return;
+        }
 
-        // linear interp for each one
-        double minSuccess = Cache.minSuccess;
-        double maxSuccess = Cache.maxSuccess;
-        double lockpickSuccessRate = Math.min(1.0, minSuccess + ((maxSuccess - minSuccess) * dexterity / 40.0)
-                + lockpickStrength * net.tfminecraft.thievery.cache.Parameters.chestStrengthSuccessBonus);
+        Inventory chestInv = container.getInventory();
+        ItemStack realItem = chestInv.getItem(chestSlot);
+        int guiSlot = session.getRevealGuiSlot(chestSlot);
 
-        double minBreak = Cache.minBreak;
-        double maxBreak = Cache.maxBreak;
-        double lockpickBreakChance = Math.max(0.0, maxBreak - ((maxBreak - minBreak) * dexterity / 40.0)
-                - lockpickStrength * net.tfminecraft.thievery.cache.Parameters.chestStrengthBreakReduction);
+        if (realItem == null || realItem.getType().isAir()) {
+            guiInv.setItem(guiSlot, createNothingPane(dummyKey));
+            session.markRevealed(chestSlot, guiSlot);
+            return;
+        }
 
-        long minDelay = 5L;
-        long maxDelay = 20L;
-        long lockpickDelay = maxDelay - (long)((maxDelay - minDelay) * dexterity / 40.0);
+        int displayAmount = hasTakeableAmount(realItem, session.getCapacityRemaining(), thiefData) ? 1 : 0;
+        ItemStack display = buildRepresentation(realItem, displayAmount, thiefData, dummyKey);
+        guiInv.setItem(guiSlot, display);
+        session.markRevealed(chestSlot, guiSlot);
+    }
 
+    private boolean hasTakeableAmount(ItemStack item, double capacityRemaining,
+            net.tfminecraft.thievery.data.PlayerData thiefData) {
+        if (BundleHandler.isBundle(item)) {
+            return BundleHandler.canStealAnything(thiefData, item, capacityRemaining);
+        }
+        return ChestLockpickSession.computeTakeableAmount(item, capacityRemaining) > 0;
+    }
 
-        p.openInventory(lockpickInv);
-        String today = dateFormat.format(new Date());
-        pingNearbyContainers(p, b.getLocation(), today);
+    private void refreshRevealedSlots(Player player, ChestLockpickSession session, Inventory guiInv,
+            Inventory chestInv) {
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
+        NamespacedKey dummyKey = new NamespacedKey(Thievery.getInstance(), "dummy");
 
-        // Write to both sides if it's a double chest
-        BlockState chestState = b.getState();
-        if (chestState instanceof Container chest) {
-            Inventory inventory = chest.getInventory();
-            if (inventory instanceof DoubleChestInventory doubleChestInventory) {
-                DoubleChest doubleChest = (DoubleChest) doubleChestInventory.getHolder();
-                if (doubleChest != null) {
-                    Chest leftChest = (Chest) doubleChest.getLeftSide();
-                    Chest rightChest = (Chest) doubleChest.getRightSide();
+        for (Map.Entry<Integer, Integer> entry : new HashMap<>(session.getGuiSlotMappings()).entrySet()) {
+            int guiSlot = entry.getKey();
+            int chestSlot = entry.getValue();
+            ItemStack realItem = chestInv.getItem(chestSlot);
 
-                    Location leftLoc = leftChest.getLocation();
-                    Location rightLoc = rightChest.getLocation();
+            if (realItem == null || realItem.getType().isAir()) {
+                guiInv.setItem(guiSlot, null);
+                continue;
+            }
 
-                    ContainerData leftData = containerDataManager.loadContainerData(leftLoc);
-                    ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
+            if (!CategoryResolver.canRevealItem(thiefData, realItem)) {
+                guiInv.setItem(guiSlot, createHiddenPane(dummyKey));
+                continue;
+            }
 
-                    leftData.updateAccess(playerId, today);
-                    rightData.updateAccess(playerId, today);
+            int displayAmount = hasTakeableAmount(realItem, session.getCapacityRemaining(), thiefData) ? 1 : 0;
+            ItemStack display = buildRepresentation(realItem, displayAmount, thiefData, dummyKey);
+            guiInv.setItem(guiSlot, display);
+        }
+    }
 
-                    containerDataManager.saveContainerData(leftData);
-                    containerDataManager.saveContainerData(rightData);
-                }
-            } else {
-                // Single chest
-                data.updateAccess(playerId, today);
-                containerDataManager.saveContainerData(data);
+    private ItemStack buildRepresentation(ItemStack realItem, int displayAmount,
+            net.tfminecraft.thievery.data.PlayerData thiefData, NamespacedKey dummyKey) {
+        if (!CategoryResolver.canRevealItem(thiefData, realItem)) {
+            return createHiddenPane(dummyKey);
+        }
+        if (displayAmount <= 0) {
+            return null;
+        }
+
+        ItemStack display = realItem.clone();
+        if (!BundleHandler.isBundle(realItem)) {
+            display.setAmount(displayAmount);
+        }
+
+        ItemMeta meta = display.getItemMeta();
+        if (meta == null) return display;
+
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        lore.add("");
+        if (BundleHandler.isBundle(realItem)) {
+            lore.add("§eContents Value: §a"
+                    + formatValue(BundleHandler.getRevealableContentsValue(thiefData, realItem)));
+            lore.add("§eClick §7to take what you can");
+        } else {
+            lore.add("§eTotal Value: §a" + formatValue(CategoryResolver.getTotalValue(display)));
+            lore.add("§eClick §7to take §bOne");
+            if (displayAmount > 1) {
+                lore.add("§eShift-Click §7to take §ball");
             }
         }
-        lockpickingSessions.put(p.getUniqueId(), b);
+        meta.setLore(lore);
+        display.setItemMeta(meta);
+        return display;
+    }
 
-        BukkitRunnable task = new BukkitRunnable() {
-            int slot = 0;
-            @Override
-            public void run() {
-                if (!(b.getState() instanceof Container)) {
-                    cleanup();
-                    return;
-                }
+    private String formatValue(double value) {
+        if (value == Math.rint(value)) {
+            return String.valueOf((long) value);
+        }
+        return String.valueOf(value);
+    }
 
-                if (slot >= invSize) {
-                    cleanup();
-                    return;
-                }
+    private void performTake(Player player, ChestLockpickSession session, int guiSlot, Inventory guiInv,
+            ClickType clickType, ItemStack clickedItem) {
+        Integer chestSlot = session.getChestSlotForGui(guiSlot);
+        if (chestSlot == null) return;
 
-                if (Math.random() < lockpickBreakChance) {
-                    p.getInventory().setItemInMainHand(null);
-                    p.playSound(p.getLocation(), Sound.ENTITY_ITEM_BREAK, 1f, 1f);
-                    p.sendMessage(ChatColor.RED + "Your lockpick broke!");
-                    cleanup();
-                    return;
-                }
+        Block chestBlock = session.getChestBlock();
+        if (!(chestBlock.getState() instanceof Container container)) return;
 
-                p.playSound(p.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 0.4f, 0.8f);
-                p.playSound(p.getLocation(), Sound.BLOCK_LEVER_CLICK, 0.3f, 1.2f);
+        Inventory realInv = container.getInventory();
+        ItemStack realItem = realInv.getItem(chestSlot);
+        if (realItem == null || realItem.getType().isAir()) {
+            guiInv.setItem(guiSlot, null);
+            player.sendMessage(ChatColor.RED + "The item is no longer there.");
+            return;
+        }
+        if (ClueChecker.isClueItem(realItem)) {
+            return;
+        }
 
-                int chestSlot = randomizedSlots.get(slot);
-                ItemStack realItem = chestInv.getItem(chestSlot);
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
 
-                if (realItem != null && Math.random() < lockpickSuccessRate) {
-                    lockpickInv.setItem(chestSlot, realItem.clone());
-                } else {
-                    ItemStack failPane = new ItemStack(Material.RED_STAINED_GLASS_PANE);
-                    ItemMeta failMeta = failPane.getItemMeta();
-                    failMeta.setDisplayName(ChatColor.RED + "Nothing found.");
-                    failMeta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
-                    failPane.setItemMeta(failMeta);
-                    lockpickInv.setItem(chestSlot, failPane);
-                }
+        if (BundleHandler.isBundle(realItem)) {
+            performBundleTake(player, session, guiInv, realInv, chestSlot, chestBlock, realItem, thiefData);
+            return;
+        }
 
-                if (slot < invSize - 1) {
-                    int nextSlot = randomizedSlots.get(slot + 1);
-                    lockpickInv.setItem(nextSlot, curPane);
-                }
+        int maxByBudget = ChestLockpickSession.computeTakeableAmount(realItem, session.getCapacityRemaining());
+        if (maxByBudget <= 0) {
+            guiInv.setItem(guiSlot, null);
+            refreshRevealedSlots(player, session, guiInv, realInv);
+            return;
+        }
 
-                slot++;
+        ClickType effectiveClick = clickType;
+        if (clickType == ClickType.SHIFT_LEFT
+                && (clickedItem == null || clickedItem.getAmount() <= 1)) {
+            effectiveClick = ClickType.LEFT;
+        }
+
+        int takeAmount;
+        if (effectiveClick == ClickType.SHIFT_LEFT) {
+            int maxFit = maxFitInPlayerInventory(player, realItem, maxByBudget);
+            if (maxFit <= 0) {
+                player.sendMessage(ChatColor.RED + "You don't have enough inventory space!");
+                return;
             }
-
-            void cleanup() {
-                this.cancel();
-                activeLockpickingTasks.remove(p.getUniqueId());
+            takeAmount = Math.min(realItem.getAmount(), Math.min(maxByBudget, maxFit));
+        } else {
+            takeAmount = Math.min(1, Math.min(realItem.getAmount(), maxByBudget));
+            if (maxFitInPlayerInventory(player, realItem, 1) < 1) {
+                player.sendMessage(ChatColor.RED + "You don't have enough inventory space!");
+                return;
             }
-        };
+        }
 
-        activeLockpickingTasks.put(p.getUniqueId(), task);
-        task.runTaskTimer(Thievery.getInstance(), lockpickDelay / 2, lockpickDelay);
+        if (takeAmount <= 0) return;
+
+        ItemStack toGive = realItem.clone();
+        toGive.setAmount(takeAmount);
+
+        HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(toGive);
+        if (!leftovers.isEmpty()) {
+            player.sendMessage(ChatColor.RED + "You don't have enough inventory space!");
+            return;
+        }
+
+        if (realItem.getAmount() <= takeAmount) {
+            realInv.setItem(chestSlot, null);
+        } else {
+            realItem.setAmount(realItem.getAmount() - takeAmount);
+        }
+
+        session.addCapacityUsed(CategoryResolver.getTotalValue(toGive));
+        if (Cache.coreProtect) {
+            Thievery.getCoreProtect().logContainerTransaction(player.getName() + "_lockpick", chestBlock.getLocation());
+        }
+
+        ClueDropper.tryDropChestClue(player, session, chestBlock, realInv, chestSlot,
+                DexterityHelper.getDexterity(player), session.getLockpickDef().getStrength());
+        refreshRevealedSlots(player, session, guiInv, realInv);
+    }
+
+    private void performBundleTake(Player player, ChestLockpickSession session, Inventory guiInv,
+            Inventory realInv, int chestSlot, Block chestBlock, ItemStack realItem,
+            net.tfminecraft.thievery.data.PlayerData thiefData) {
+        if (!BundleHandler.canStealAnything(thiefData, realItem, session.getCapacityRemaining())) {
+            guiInv.setItem(session.getRevealGuiSlot(chestSlot), null);
+            refreshRevealedSlots(player, session, guiInv, realInv);
+            return;
+        }
+
+        BundleHandler.BundleTakeResult result = BundleHandler.takeFromBundle(
+                realItem, player, thiefData, session.getCapacityRemaining());
+        if (!result.isAnyTaken()) {
+            player.sendMessage(ChatColor.RED + "You don't have enough inventory space!");
+            return;
+        }
+
+        realInv.setItem(chestSlot, result.getUpdatedBundle());
+        session.addCapacityUsed(result.getValueTaken());
+        if (Cache.coreProtect) {
+            Thievery.getCoreProtect().logContainerTransaction(player.getName() + "_lockpick", chestBlock.getLocation());
+        }
+
+        ClueDropper.tryDropChestClue(player, session, chestBlock, realInv, chestSlot,
+                DexterityHelper.getDexterity(player), session.getLockpickDef().getStrength(), true);
+        refreshRevealedSlots(player, session, guiInv, realInv);
+    }
+
+    private int maxFitInPlayerInventory(Player player, ItemStack prototype, int maxAttempt) {
+        if (maxAttempt <= 0) return 0;
+        int maxStack = prototype.getMaxStackSize();
+        int fit = 0;
+        for (ItemStack slot : player.getInventory().getStorageContents()) {
+            if (slot == null || slot.getType().isAir()) {
+                fit += maxStack;
+            } else if (slot.isSimilar(prototype) && slot.getAmount() < maxStack) {
+                fit += maxStack - slot.getAmount();
+            }
+            if (fit >= maxAttempt) return maxAttempt;
+        }
+        return Math.min(maxAttempt, fit);
+    }
+
+    private void breakLockpick(Player player) {
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (held == null || held.getType().isAir()) return;
+        if (held.getAmount() > 1) {
+            held.setAmount(held.getAmount() - 1);
+        } else {
+            player.getInventory().setItemInMainHand(null);
+        }
     }
 
     @EventHandler
     public void takeLoot(InventoryClickEvent e) {
-        Player player = (Player) e.getWhoClicked();
+        if (!(e.getWhoClicked() instanceof Player player)) return;
         UUID uuid = player.getUniqueId();
 
         Inventory clickedInv = e.getClickedInventory();
         if (clickedInv == null || !e.getView().getTitle().equals(ChatColor.DARK_RED + "Lockpicking...")) return;
 
-        ItemStack clickedItem = e.getCurrentItem();
         e.setCancelled(true);
-        if (clickedItem == null || isDummyPane(clickedItem)) {
+
+        ChestLockpickSession session = lockpickingSessions.get(uuid);
+        if (session == null) return;
+
+        ItemStack clickedItem = e.getCurrentItem();
+        int slot = e.getSlot();
+
+        if (clickedInv != e.getView().getTopInventory()) return;
+
+        if (slot == ChestLockpickSession.SEARCH_GUI_SLOT && isSearchButton(clickedItem)) {
+            performSearch(player, session, e.getView().getTopInventory());
             return;
         }
-        if(!lockpickingSessions.containsKey(uuid)) return;
 
-        // Only allow left click in the top inventory
-        if (e.getClickedInventory() == e.getView().getTopInventory()) {
-            ClickType click = e.getClick();
+        if (clickedItem == null || isDummyPane(clickedItem) || isSearchButton(clickedItem)) return;
 
-            if (click == ClickType.LEFT) {
-                // Give the item to the player
-                HashMap<Integer, ItemStack> leftovers = player.getInventory().addItem(clickedItem.clone());
+        ClickType click = e.getClick();
+        if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) return;
 
-                // If it didn't fully fit, don't take it out
-                if (!leftovers.isEmpty()) {
-                    player.sendMessage(ChatColor.RED + "You don't have enough inventory space!");
-                    e.setCancelled(true);
-                    return;
-                }
+        Integer chestSlot = session.getChestSlotForGui(slot);
+        if (chestSlot == null) return;
 
-                // Remove from both GUI and real chest
-                int slot = e.getSlot();
-                clickedInv.setItem(slot, null);
-
-                Block chestBlock = lockpickingSessions.get(uuid);
-                if (chestBlock.getState() instanceof Container container) {
-                    Inventory realInv = container.getInventory();
-                    if(Cache.coreProtect) {
-                        Thievery.getCoreProtect().logContainerTransaction(player.getName()+"_lockpick", chestBlock.getLocation());
-                    }
-                    realInv.setItem(slot, null);
-                }
-            } else {
-                e.setCancelled(true);
-                player.sendMessage(ChatColor.RED + "Only left-clicking is allowed!");
-            }
-        } else {
-            // Prevent putting stuff in from player inventory
-            e.setCancelled(true);
-        }
+        performTake(player, session, slot, e.getView().getTopInventory(), click, clickedItem);
     }
 
-    private double getLockpickStrength(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return net.tfminecraft.thievery.cache.Parameters.defaultLockpickStrength;
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.getPersistentDataContainer().has(Keys.lockpickStrength, PersistentDataType.DOUBLE))
-            return net.tfminecraft.thievery.cache.Parameters.defaultLockpickStrength;
-        return meta.getPersistentDataContainer().get(Keys.lockpickStrength, PersistentDataType.DOUBLE);
+    private ItemStack createUnknownPane(NamespacedKey dummyKey) {
+        ItemStack unkPane = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemMeta unkMeta = unkPane.getItemMeta();
+        unkMeta.setDisplayName("???");
+        unkMeta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
+        unkPane.setItemMeta(unkMeta);
+        return unkPane;
     }
 
-    private boolean isLockpickItem(ItemStack item) {
-        if (item == null || item.getType().isAir()) return false;
-        for (String path : Cache.lockPickItems) {
-            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, path)) return true;
+    private ItemStack createNothingPane(NamespacedKey dummyKey) {
+        ItemStack failPane = new ItemStack(Material.RED_STAINED_GLASS_PANE);
+        ItemMeta failMeta = failPane.getItemMeta();
+        failMeta.setDisplayName(ChatColor.RED + "Nothing found.");
+        failMeta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
+        failPane.setItemMeta(failMeta);
+        return failPane;
+    }
+
+    private ItemStack createSearchButton(net.tfminecraft.thievery.data.PlayerData thiefData,
+            int dexterity, double lockpickStrength) {
+        ItemStack search = new ItemStack(Material.LIME_DYE);
+        ItemMeta meta = search.getItemMeta();
+        meta.setDisplayName("§aSearch");
+        double risk = thiefData.getRisk();
+        double critical = thiefData.getCriticalChance(dexterity, lockpickStrength);
+        List<String> lore = new ArrayList<>(RiskCalculator.formatRiskLore(risk, critical));
+        if (!lore.isEmpty()) {
+            meta.setLore(lore);
         }
-        return false;
+        meta.getPersistentDataContainer().set(Keys.searchButton, PersistentDataType.BYTE, (byte) 1);
+        search.setItemMeta(meta);
+        return search;
+    }
+
+    private void refreshSearchButton(Player player, ChestLockpickSession session, Inventory guiInv) {
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
+        int dexterity = DexterityHelper.getDexterity(player);
+        double lockpickStrength = session.getLockpickDef().getStrength();
+        guiInv.setItem(ChestLockpickSession.SEARCH_GUI_SLOT,
+                createSearchButton(thiefData, dexterity, lockpickStrength));
+    }
+
+    private boolean isSearchButton(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return false;
+        return item.getItemMeta().getPersistentDataContainer().has(Keys.searchButton, PersistentDataType.BYTE);
     }
 
     private String getMostRecentGuildAccess(ContainerData data, Player player) {
@@ -939,5 +1132,14 @@ public class ContainerManager implements Listener {
         NamespacedKey key = new NamespacedKey(Thievery.getInstance(), "dummy");
 
         return meta.getPersistentDataContainer().has(key, PersistentDataType.BYTE);
+    }
+
+    private ItemStack createHiddenPane(NamespacedKey dummyKey) {
+        ItemStack hidden = new ItemStack(Material.BARRIER);
+        ItemMeta meta = hidden.getItemMeta();
+        meta.setDisplayName("§7HIDDEN!");
+        meta.getPersistentDataContainer().set(dummyKey, PersistentDataType.BYTE, (byte) 1);
+        hidden.setItemMeta(meta);
+        return hidden;
     }
 }

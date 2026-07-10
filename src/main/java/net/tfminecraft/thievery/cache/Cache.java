@@ -11,12 +11,25 @@ public class Cache {
 
     public static List<String> traits = new ArrayList<>();
 
-    public static double minSuccess;
-    public static double maxSuccess;
+    public static int categoryPoints = 30;
+    public static int pointGainIntervalHours = 24;
 
-    public static double minBreak;
-    public static double maxBreak;
+    public static double defaultValue = 0.1;
 
-    public static List<String> keyItems = new ArrayList<>();
-    public static List<String> lockPickItems = new ArrayList<>();
+    public static int recentClueMax = 6;
+    public static int recentClueCooldownHours = 72;
+    public static int criticalCooldownHours = 24;
+
+    public static double riskGainDoorMin = 0.05;
+    public static double riskGainDoorMax = 0.15;
+    public static double riskGainChestMin = 0.025;
+    public static double riskGainChestMax = 0.075;
+    public static double riskPickReduction = 0.5;
+    public static double riskDecayPerHour = 0.08;
+
+    public static double criticalBase = 0.0;
+    public static double criticalRiskWeight = 0.5;
+    public static double criticalDexReduction = 0.15;
+    public static double criticalStrengthReduction = 0.2;
+    public static String criticalClue = "§7This seems to be the work of {character_name}";
 }

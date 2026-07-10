@@ -9,6 +9,7 @@ public class DoorData {
     private String key;
     private double strength;
     private UUID ownerUUID;
+    private Long unlockExpiryMs;
 
     public DoorData(Location location, String key, double strength, UUID ownerUUID) {
         this.location = location;
@@ -31,5 +32,13 @@ public class DoorData {
 
     public UUID getOwnerUUID() {
         return ownerUUID;
+    }
+
+    public Long getUnlockExpiryMs() {
+        return unlockExpiryMs;
+    }
+
+    public void setUnlockExpiryMs(Long unlockExpiryMs) {
+        this.unlockExpiryMs = unlockExpiryMs;
     }
 }

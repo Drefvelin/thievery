@@ -1,53 +1,104 @@
-cooldown: 7
-lockpick-range: 8
-lockpick: m.tools.lockpick
+cooldown: 3
+lockpick-range: -1
 
 traits:
     - thief
 
-# Door lockpicking parameters
+keys:
+  iron_key:
+    item: "v.iron_nugget"
+    strength: 0.2
+  gold_key:
+    item: "v.gold_nugget"
+    strength: 0.5
+
+lockpicks:
+  iron_lockpick:
+    item: "v.iron_ingot"
+    strength: 0.35
+    capacity: 30
+
+category_points: 30
+point_gain_interval: 24
+
+default_value: 0.1
+
+masks:
+  ghost_mask:
+    item: m.masks.ghost_mask
+
+masked-channels:
+  rp:
+    commands: [rp]
+    format: '&fMasked&e: &f"&e{message}&f"'
+    range: 15
+
+  shout:
+    commands: [shout]
+    format: '&fMasked&6 shouts: &f"&6{message}&f"'
+    range: 24
+
+  yell:
+    commands: [yell, y]
+    format: '&fMasked&c yells: &f"&c&l{message}&f"'
+    range: 48
+
+  whisper:
+    commands: [whisper, wh]
+    format: '&fMasked#55aaff whispers: &f&o"#55aaff&o{message}&f&o"'
+    range: 2
+
+  looc:
+    commands: [looc]
+    format: '&f[&2LOOC&f] &fMasked: &7{message}'
+    range: 20
+
+  action:
+    commands: [me]
+    format: '&e* &fMasked &d{message}'
+    range: 20
+
+  # ooc:
+  #   commands: [ooc]
+  #   format: '&f[&9OOC&f] &fMasked: &7{message}'
+  #   range:
+
+clues:
+  recent-max: 6
+  recent-cooldown-hours: 1
+  critical-cooldown-hours: 24
+  risk-gain-door:
+    min: 0.05
+    max: 0.15
+  risk-gain-chest:
+    min: 0.025
+    max: 0.075
+  risk-pick-reduction: 0.5
+  risk-decay-per-hour: 0.08
+  critical-base: 0.0
+  critical-risk-weight: 0.5
+  critical-dex-reduction: 0.15
+  critical-strength-reduction: 0.2
+  critical-clue: "§7This seems to be the work of {character_name}"
+
 lockpicking:
-  # Default strength assigned to a key with no PDC tag (0-1)
-  default-key-strength: 1.0
-  # Default strength assigned to a lockpick with no PDC tag (0-1)
-  default-lockpick-strength: 0.0
-  # Maximum fraction of lock strength a lockpick can negate (0-1)
+  door-max-distance: 3
   lockpick-max-reduction: 0.5
-  # Milliseconds of debuff applied on fail/break
   fail-cooldown-ms: 60000
+  door-unlock-window-minutes: 60
 
   bar:
-    # Total number of slots in the minigame bar
     length: 20
-    # Success slot count at lock strength 0 (easiest)
     max-success-slots: 3
-    # Break slot count at lock strength 0 (floor)
     min-break-slots: 3
-    # Break slot count at lock strength 1 (ceiling)
     max-break-slots: 19
-    # Bar speed in slots per tick at dexterity 0
     base-speed: 2.5
-    # Speed reduction per dexterity level (fraction of base speed)
     dex-speed-reduction-per-level: 0.02
-    # Minimum bar speed regardless of dexterity
     min-speed: 0.4
-    # Random speed jitter per tick as a fraction of base speed
     speed-jitter-fraction: 0.3
-    # Probability per tick of random direction flip
     random-flip-chance: 0.03
 
-  # MMOCore attribute ID used for lockpick speed/success scaling (e.g. dexterity, roguery)
   attribute: dexterity
 
-  # Chest lockpicking rates
   chest:
-    # Item reveal success rate at dexterity 0 (min) and max dexterity (max)
-    success-rate-min: 0.4
-    success-rate-max: 0.9
-    # Lockpick break chance per slot at dexterity 0 (max) and max dexterity (min)
-    break-chance-min: 0.01
-    break-chance-max: 0.15
-    # Bonus to success rate when using a full-strength (1.0) lockpick
-    strength-success-bonus: 0.2
-    # Reduction to break chance when using a full-strength (1.0) lockpick
-    strength-break-reduction: 0.08
+    base-chance: 0.5

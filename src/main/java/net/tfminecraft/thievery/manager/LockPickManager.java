@@ -9,12 +9,16 @@ import java.util.Random;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Parameters;
+import net.tfminecraft.thievery.data.PlayerData;
+import net.tfminecraft.thievery.util.DoorLockpickUtil;
+import net.tfminecraft.thievery.util.RiskCalculator;
 
 public class LockPickManager {
 
@@ -32,15 +36,19 @@ public class LockPickManager {
     private static class LockpickSession {
         final Location doorLocation;
         final char[] layout; // 's' = success, 'f' = fail, 'b' = break
+        final double lockpickStrength;
+        final int dexterity;
         double position = 0;
         final double speed;
         int direction = 1;
         BukkitRunnable task;
 
-        LockpickSession(Location doorLocation, char[] layout, double speed) {
+        LockpickSession(Location doorLocation, char[] layout, double speed, double lockpickStrength, int dexterity) {
             this.doorLocation = doorLocation;
             this.layout = layout;
             this.speed = speed;
+            this.lockpickStrength = lockpickStrength;
+            this.dexterity = dexterity;
         }
     }
 
@@ -49,7 +57,8 @@ public class LockPickManager {
      * effectiveStrength: 0 = easy (many success bars), 1 = hard (few success, many break bars)
      * dexterity: 0-40, each level slows bar movement by 2%
      */
-    public void startSession(Player player, Location doorLoc, double effectiveStrength, int dexterity) {
+    public void startSession(Player player, Location doorLoc, double effectiveStrength, int dexterity,
+            double lockpickStrength) {
         cancelSession(player.getUniqueId());
 
         int barLength = Parameters.barLength;
@@ -89,7 +98,7 @@ public class LockPickManager {
         double speed = Math.max(Parameters.minBarSpeed, Parameters.baseBarSpeed * (1.0 - dexterity * Parameters.dexSpeedReductionPerLevel));
 
         UUID uuid = player.getUniqueId();
-        LockpickSession session = new LockpickSession(doorLoc, layout, speed);
+        LockpickSession session = new LockpickSession(doorLoc, layout, speed, lockpickStrength, dexterity);
         session.position = startPosition;
 
         BukkitRunnable task = new BukkitRunnable() {
@@ -98,6 +107,14 @@ public class LockPickManager {
                 if (!player.isOnline()) {
                     sessions.remove(uuid);
                     this.cancel();
+                    return;
+                }
+
+                if (!DoorLockpickUtil.isWithinDoorRange(player, session.doorLocation, Parameters.doorMaxDistance)) {
+                    sessions.remove(uuid);
+                    this.cancel();
+                    player.sendTitle("", "", 0, 1, 0);
+                    player.sendMessage(ChatColor.RED + "Lockpicking cancelled — you moved too far from the door.");
                     return;
                 }
 
@@ -137,7 +154,13 @@ public class LockPickManager {
                 }
                 bar.append("§8]");
 
-                player.sendTitle("", bar.toString(), 0, 3, 0);
+                PlayerData thiefData = Thievery.getPlayerManager().get(uuid);
+                thiefData.applyRiskDecay(session.dexterity);
+                double risk = thiefData.getRisk();
+                double critical = RiskCalculator.computeCritical(risk, session.dexterity, session.lockpickStrength);
+                String riskTitle = RiskCalculator.formatRiskTitle(risk, critical);
+
+                player.sendTitle(riskTitle, bar.toString(), 0, 3, 0);
             }
         };
 

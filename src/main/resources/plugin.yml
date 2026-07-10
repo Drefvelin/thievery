@@ -5,6 +5,8 @@ version: 1.0
 author: Drefvelin
 
 depend: [MMOCore, TLibs]
+softdepend: [OpenRP]
+loadbefore: [OpenRP]
 
 commands:
   thievery:

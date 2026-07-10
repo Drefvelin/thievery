@@ -1,8 +1,6 @@
 package net.tfminecraft.thievery.manager;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,11 +24,16 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-import me.Plugins.TLibs.TLibs;
-import net.Indyuce.mmocore.api.player.PlayerData;
-import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Parameters;
 import net.tfminecraft.thievery.data.DoorData;
+import net.tfminecraft.thievery.data.RiskSource;
+import net.tfminecraft.thievery.database.Database;
+import net.tfminecraft.thievery.util.ClueChecker;
+import net.tfminecraft.thievery.util.ClueDropper;
+import net.tfminecraft.thievery.util.DexterityHelper;
+import net.tfminecraft.thievery.util.DoorLockpickUtil;
+import net.tfminecraft.thievery.util.ToolResolver;
 import net.tfminecraft.util.GuildChecker;
 import net.tfminecraft.util.Keys;
 
@@ -51,7 +54,7 @@ public class DoorManager implements Listener {
         Player player = event.getPlayer();
         Location canonical = getCanonicalLocation(block);
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        boolean holdingKey = isKeyItem(heldItem);
+        boolean holdingKey = ToolResolver.isKey(heldItem);
 
         DoorData data = doorDataManager.loadDoorData(canonical);
 
@@ -63,7 +66,7 @@ public class DoorManager implements Listener {
             if (data == null) {
                 // Lock the door
                 String uuid = getOrCreateKeyUUID(heldItem);
-                double strength = getOrCreateKeyStrength(heldItem);
+                double strength = ToolResolver.getKeyStrength(heldItem);
                 doorDataManager.saveDoorData(new DoorData(canonical, uuid, strength, player.getUniqueId()));
                 player.sendTitle(ChatColor.GREEN + "Door locked.", "", 5, 30, 10);
             } else {
@@ -80,7 +83,7 @@ public class DoorManager implements Listener {
         }
 
         // Lockpick handling — must come before the generic locked-door block
-        if (isLockpickItem(heldItem) && data != null) {
+        if (ToolResolver.isLockpick(heldItem) && data != null) {
             event.setCancelled(true);
             UUID uuid = player.getUniqueId();
 
@@ -106,6 +109,8 @@ public class DoorManager implements Listener {
         if (data != null) {
             // Always allow closing an open door, even without the key
             if (isDoorOpen(block)) return;
+
+            if (isUnlockWindowActive(data)) return;
 
             String keyUUID = getKeyUUID(heldItem);
             if (keyUUID == null || !keyUUID.equals(data.getKey())) {
@@ -190,14 +195,6 @@ public class DoorManager implements Listener {
         return block.getLocation();
     }
 
-    private boolean isKeyItem(ItemStack item) {
-        if (item == null || item.getType().isAir()) return false;
-        for (String path : Cache.keyItems) {
-            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, path)) return true;
-        }
-        return false;
-    }
-
     private String getKeyUUID(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return null;
         ItemMeta meta = item.getItemMeta();
@@ -215,37 +212,17 @@ public class DoorManager implements Listener {
         return newUUID;
     }
 
-    private double getOrCreateKeyStrength(ItemStack item) {
-        ItemMeta meta = item.getItemMeta();
-        double strength;
-        if (meta.getPersistentDataContainer().has(Keys.keyStrength, PersistentDataType.DOUBLE)) {
-            strength = meta.getPersistentDataContainer().get(Keys.keyStrength, PersistentDataType.DOUBLE);
-        } else {
-            strength = Parameters.defaultKeyStrength;
-            meta.getPersistentDataContainer().set(Keys.keyStrength, PersistentDataType.DOUBLE, strength);
-        }
-        updateStrengthLore(meta, strength);
-        item.setItemMeta(meta);
-        return strength;
-    }
-
-    private void updateStrengthLore(ItemMeta meta, double strength) {
-        int filled = (int) Math.round(strength * 5);
-        filled = Math.max(0, Math.min(5, filled));
-        StringBuilder stars = new StringBuilder(ChatColor.GOLD.toString());
-        for (int i = 0; i < filled; i++) stars.append('★');
-        stars.append(ChatColor.DARK_GRAY);
-        for (int i = filled; i < 5; i++) stars.append('☆');
-
-        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
-        while (lore.size() < 3) lore.add("");
-        lore.set(2, stars.toString());
-        meta.setLore(lore);
-    }
-
     // --- Lockpick helpers ---
 
     private void startLockpicking(Player player, Location canonical, DoorData data) {
+        if (!DoorLockpickUtil.isWithinDoorRange(player, canonical, Parameters.doorMaxDistance)) {
+            player.sendMessage(ChatColor.RED + "You are too far from the door.");
+            return;
+        }
+        if (!ClueChecker.hasEnoughClues(player)) {
+            ClueChecker.sendInsufficientCluesMessage(player);
+            return;
+        }
         GuildChecker.LockpickAccessResult access = GuildChecker.checkLockpickAccess(data.getOwnerUUID());
         if (access.type == GuildChecker.LockpickAccessResult.Type.DENY) {
             player.sendMessage(ChatColor.RED + access.message);
@@ -260,24 +237,38 @@ public class DoorManager implements Listener {
             long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId());
             player.sendMessage(ChatColor.YELLOW + "Lockpicking with " + penalty + "% penalty (" + seconds + "s)");
         }
-        double lockpickStrength = getLockpickStrength(player.getInventory().getItemInMainHand());
+        double lockpickStrength = ToolResolver.getLockpickStrength(player.getInventory().getItemInMainHand());
         double effectiveStrength = data.getStrength() * (1.0 - Math.min(1.0, lockpickStrength) * Parameters.lockpickMaxReduction);
-        int dexterity = getDexterity(player);
-        lockPickManager.startSession(player, canonical, effectiveStrength, dexterity);
+        int dexterity = DexterityHelper.getDexterity(player);
+
+        net.tfminecraft.thievery.data.PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
+        thiefData.addRiskGain(dexterity, lockpickStrength, RiskSource.DOOR);
+        Database.savePlayerData(thiefData);
+
+        player.sendMessage(ChatColor.RED + "Walk away from the door to cancel.");
+        lockPickManager.startSession(player, canonical, effectiveStrength, dexterity, lockpickStrength);
     }
 
     private void handleSelectResult(Player player, LockPickManager.SelectResult result, Location canonical) {
+        int dexterity = DexterityHelper.getDexterity(player);
+        double lockpickStrength = ToolResolver.getLockpickStrength(player.getInventory().getItemInMainHand());
+        DoorData doorData = doorDataManager.loadDoorData(canonical);
+        UUID ownerUUID = doorData != null ? doorData.getOwnerUUID() : null;
         switch (result) {
             case SUCCESS -> {
                 openDoor(canonical);
+                if (doorData != null) {
+                    doorData.setUnlockExpiryMs(System.currentTimeMillis() + Parameters.doorUnlockWindowMs);
+                    doorDataManager.saveDoorData(doorData);
+                }
                 player.sendTitle(ChatColor.GREEN + "Picked!", "", 5, 40, 10);
-                // Quiet world sound — sneaky entry
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_WOODEN_DOOR_OPEN, 0.15f, 1.2f);
+                ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
             case FAIL -> {
                 player.sendTitle(ChatColor.RED + "Failed!", "", 5, 40, 10);
-                // Loud world sound — others nearby hear the failed pick
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_IRON_TRAPDOOR_OPEN, 4.5f, 0.8f);
+                ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
             case BREAK -> {
                 ItemStack held = player.getInventory().getItemInMainHand();
@@ -287,12 +278,23 @@ public class DoorManager implements Listener {
                     player.getInventory().setItemInMainHand(null);
                 }
                 player.sendTitle(ChatColor.RED + "Lockpick broke!", "", 5, 40, 10);
-                // Loud world sounds — pick snapping is audible
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_IRON_TRAPDOOR_OPEN, 4.5f, 0.8f);
                 canonical.getWorld().playSound(canonical, Sound.ENTITY_ITEM_BREAK, 4.5f, 1f);
+                ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
             default -> {}
         }
+    }
+
+    private boolean isUnlockWindowActive(DoorData data) {
+        Long expiry = data.getUnlockExpiryMs();
+        if (expiry == null) return false;
+        if (System.currentTimeMillis() >= expiry) {
+            data.setUnlockExpiryMs(null);
+            doorDataManager.saveDoorData(data);
+            return false;
+        }
+        return true;
     }
 
     private void openDoor(Location canonical) {
@@ -308,29 +310,6 @@ public class DoorManager implements Listener {
                 topOpenable.setOpen(true);
                 top.setBlockData(topOpenable);
             }
-        }
-    }
-
-    private boolean isLockpickItem(ItemStack item) {
-        if (item == null || item.getType().isAir()) return false;
-        for (String path : Cache.lockPickItems) {
-            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, path)) return true;
-        }
-        return false;
-    }
-
-    private double getLockpickStrength(ItemStack item) {
-        if (item == null || !item.hasItemMeta()) return Parameters.defaultLockpickStrength;
-        ItemMeta meta = item.getItemMeta();
-        if (!meta.getPersistentDataContainer().has(Keys.lockpickStrength, PersistentDataType.DOUBLE)) return Parameters.defaultLockpickStrength;
-        return meta.getPersistentDataContainer().get(Keys.lockpickStrength, PersistentDataType.DOUBLE);
-    }
-
-    private int getDexterity(Player player) {
-        try {
-            return PlayerData.get(player.getUniqueId()).getAttributes().getInstance(Parameters.lockpickAttribute).getTotal();
-        } catch (Exception e) {
-            return 0;
         }
     }
 
