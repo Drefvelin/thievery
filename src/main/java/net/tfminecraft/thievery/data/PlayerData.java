@@ -24,6 +24,7 @@ public class PlayerData {
     private long lastRiskDecayMs;
     private List<RecentClueEntry> recentClues = new ArrayList<>();
     private Map<String, Long> lastCriticalClueAtByTarget = new HashMap<>();
+    private Map<String, Long> paperKeyCooldownExpiryByDoorUuid = new HashMap<>();
 
     public PlayerData(UUID id) {
         this.id = id;
@@ -34,6 +35,7 @@ public class PlayerData {
         this.lastRiskDecayMs = System.currentTimeMillis();
         this.recentClues = new ArrayList<>();
         this.lastCriticalClueAtByTarget = new HashMap<>();
+        this.paperKeyCooldownExpiryByDoorUuid = new HashMap<>();
     }
 
     public UUID getId() {
@@ -101,6 +103,9 @@ public class PlayerData {
         if (source == RiskSource.CHEST) {
             min = Cache.riskGainChestMin;
             max = Cache.riskGainChestMax;
+        } else if (source == RiskSource.PICKPOCKET) {
+            min = Cache.riskGainPickpocketMin;
+            max = Cache.riskGainPickpocketMax;
         } else {
             min = Cache.riskGainDoorMin;
             max = Cache.riskGainDoorMax;
@@ -128,6 +133,43 @@ public class PlayerData {
     public void setLastCriticalClueAtByTarget(Map<String, Long> lastCriticalClueAtByTarget) {
         this.lastCriticalClueAtByTarget = lastCriticalClueAtByTarget != null
                 ? lastCriticalClueAtByTarget : new HashMap<>();
+    }
+
+    public Map<String, Long> getPaperKeyCooldownExpiryByDoorUuid() {
+        return paperKeyCooldownExpiryByDoorUuid;
+    }
+
+    public void setPaperKeyCooldownExpiryByDoorUuid(Map<String, Long> paperKeyCooldownExpiryByDoorUuid) {
+        this.paperKeyCooldownExpiryByDoorUuid = paperKeyCooldownExpiryByDoorUuid != null
+                ? paperKeyCooldownExpiryByDoorUuid : new HashMap<>();
+    }
+
+    public boolean isPaperKeyOnCooldown(String doorKeyUuid) {
+        return getPaperKeyCooldownRemainingMinutes(doorKeyUuid) > 0;
+    }
+
+    public long getPaperKeyCooldownRemainingMinutes(String doorKeyUuid) {
+        if (doorKeyUuid == null) {
+            return 0;
+        }
+        Long expiry = paperKeyCooldownExpiryByDoorUuid.get(doorKeyUuid);
+        if (expiry == null) {
+            return 0;
+        }
+        long remainingMs = expiry - System.currentTimeMillis();
+        if (remainingMs <= 0) {
+            paperKeyCooldownExpiryByDoorUuid.remove(doorKeyUuid);
+            return 0;
+        }
+        return (remainingMs + 59_999L) / 60_000L;
+    }
+
+    public void recordPaperKeyCooldown(String doorKeyUuid, int cooldownMinutes) {
+        if (doorKeyUuid == null || cooldownMinutes <= 0) {
+            return;
+        }
+        long expiry = System.currentTimeMillis() + (long) cooldownMinutes * 60_000L;
+        paperKeyCooldownExpiryByDoorUuid.put(doorKeyUuid, expiry);
     }
 
     public List<String> getRecentCluesForExclude(String targetKey) {
@@ -184,6 +226,12 @@ public class PlayerData {
         }
     }
 
+    public void clearCooldowns() {
+        paperKeyCooldownExpiryByDoorUuid.clear();
+        lastCriticalClueAtByTarget.clear();
+        recentClues.clear();
+    }
+
     public void normalizeAfterLoad() {
         if (activeCategories == null) {
             activeCategories = new ArrayList<>();
@@ -193,6 +241,9 @@ public class PlayerData {
         }
         if (lastCriticalClueAtByTarget == null) {
             lastCriticalClueAtByTarget = new HashMap<>();
+        }
+        if (paperKeyCooldownExpiryByDoorUuid == null) {
+            paperKeyCooldownExpiryByDoorUuid = new HashMap<>();
         }
         if (lastRiskDecayMs <= 0) {
             lastRiskDecayMs = System.currentTimeMillis();
@@ -208,7 +259,46 @@ public class PlayerData {
                 it.remove();
             }
         }
+        long now = System.currentTimeMillis();
+        Iterator<Map.Entry<String, Long>> paperIt = paperKeyCooldownExpiryByDoorUuid.entrySet().iterator();
+        while (paperIt.hasNext()) {
+            Map.Entry<String, Long> entry = paperIt.next();
+            if (entry.getValue() <= now) {
+                paperIt.remove();
+            }
+        }
         setRisk(risk);
+        migrateLegacyCategoryIds();
+    }
+
+    private void migrateLegacyCategoryIds() {
+        List<String> migrated = new ArrayList<>();
+        for (String categoryId : activeCategories) {
+            String mapped = mapLegacyCategoryId(categoryId);
+            if (mapped != null) {
+                if (CategoryLoader.getById(mapped) != null && !migrated.contains(mapped)) {
+                    migrated.add(mapped);
+                }
+                continue;
+            }
+            if (CategoryLoader.getById(categoryId) != null && !migrated.contains(categoryId)) {
+                migrated.add(categoryId);
+            }
+        }
+        activeCategories = migrated;
+    }
+
+    private static String mapLegacyCategoryId(String id) {
+        if (id.startsWith("ac_armour_tier_") || id.startsWith("ac_armor_tier_")) {
+            return "tier_" + id.substring(id.lastIndexOf('_') + 1) + "_armor";
+        }
+        if (id.startsWith("ac_weapons_tier_")) {
+            return "tier_" + id.substring(id.lastIndexOf('_') + 1) + "_weapons";
+        }
+        if (id.startsWith("ac_bows_tier_")) {
+            return "tier_" + id.substring(id.lastIndexOf('_') + 1) + "_bows";
+        }
+        return null;
     }
 
     public int getAllocatedCost() {

@@ -4,9 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.bukkit.ChatColor;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
@@ -33,6 +35,11 @@ import net.tfminecraft.thievery.util.ClueChecker;
 import net.tfminecraft.thievery.util.ClueDropper;
 import net.tfminecraft.thievery.util.DexterityHelper;
 import net.tfminecraft.thievery.util.DoorLockpickUtil;
+import net.tfminecraft.thievery.util.KeychainHandler;
+import net.tfminecraft.thievery.util.KeychainHandler.DoorKeyMatch;
+import net.tfminecraft.thievery.util.KeychainHandler.DoorKeyPurpose;
+import net.tfminecraft.thievery.util.KeyCopyHandler;
+import net.tfminecraft.thievery.util.ThieveryTexts;
 import net.tfminecraft.thievery.util.ToolResolver;
 import net.tfminecraft.util.GuildChecker;
 import net.tfminecraft.util.Keys;
@@ -40,8 +47,12 @@ import net.tfminecraft.util.Keys;
 public class DoorManager implements Listener {
 
     private final DoorDataManager doorDataManager = new DoorDataManager();
-    private final LockPickManager lockPickManager = new LockPickManager();
+    private final LockPickManager lockPickManager;
     private final Map<UUID, Long> lastInteract = new HashMap<>();
+
+    public DoorManager(LockPickManager lockPickManager) {
+        this.lockPickManager = lockPickManager;
+    }
 
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -54,31 +65,44 @@ public class DoorManager implements Listener {
         Player player = event.getPlayer();
         Location canonical = getCanonicalLocation(block);
         ItemStack heldItem = player.getInventory().getItemInMainHand();
-        boolean holdingKey = ToolResolver.isKey(heldItem);
+
+        if (ToolResolver.isDebugTool(heldItem)) {
+            event.setCancelled(true);
+            showDebugLockInfo(player, canonical);
+            return;
+        }
+
+        boolean holdingLockingKey = ToolResolver.isLockingKey(heldItem);
 
         DoorData data = doorDataManager.loadDoorData(canonical);
 
-        if (player.isSneaking() && holdingKey) {
+        if (player.isSneaking() && holdingLockingKey) {
             long now = System.currentTimeMillis();
             if (now - lastInteract.getOrDefault(player.getUniqueId(), 0L) < 200) return;
             lastInteract.put(player.getUniqueId(), now);
             event.setCancelled(true);
             if (data == null) {
-                // Lock the door
                 String uuid = getOrCreateKeyUUID(heldItem);
+                if (uuid == null) return;
                 double strength = ToolResolver.getKeyStrength(heldItem);
                 doorDataManager.saveDoorData(new DoorData(canonical, uuid, strength, player.getUniqueId()));
-                player.sendTitle(ChatColor.GREEN + "Door locked.", "", 5, 30, 10);
+                player.sendTitle(ThieveryTexts.msg(ThieveryTexts.SUCCESS + "Door locked."), "", 5, 30, 10);
+                playLockToggleSound(canonical);
             } else {
-                // Try to unlock
-                String keyUUID = getKeyUUID(heldItem);
-                if (keyUUID != null && keyUUID.equals(data.getKey())) {
+                if (KeychainHandler.matchesDoor(heldItem, data.getKey(), DoorKeyPurpose.UNLOCK_OR_BREAK)) {
                     doorDataManager.deleteDoorData(canonical);
-                    player.sendTitle(ChatColor.GREEN + "Door unlocked.", "", 5, 30, 10);
+                    player.sendTitle(ThieveryTexts.msg(ThieveryTexts.SUCCESS + "Door unlocked."), "", 5, 30, 10);
+                    playLockToggleSound(canonical);
                 } else {
-                    player.sendTitle(ChatColor.RED + "This key does not fit this lock.", "", 5, 30, 10);
+                    player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "This key does not fit this lock."), "", 5, 30, 10);
                 }
             }
+            return;
+        }
+
+        if (player.isSneaking() && KeyCopyHandler.isPaperCopy(heldItem)) {
+            event.setCancelled(true);
+            player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "Paper keys can only open doors."), "", 5, 30, 10);
             return;
         }
 
@@ -112,10 +136,12 @@ public class DoorManager implements Listener {
 
             if (isUnlockWindowActive(data)) return;
 
-            String keyUUID = getKeyUUID(heldItem);
-            if (keyUUID == null || !keyUUID.equals(data.getKey())) {
+            DoorKeyMatch match = KeychainHandler.resolveDoorMatch(heldItem, data.getKey(), DoorKeyPurpose.OPEN);
+            if (match == null) {
                 event.setCancelled(true);
-                player.sendTitle(ChatColor.RED + "This door is locked.", "", 5, 30, 10);
+                player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "This door is locked."), "", 5, 30, 10);
+            } else if (match.isPaper()) {
+                consumePaperKey(player, heldItem, data.getKey());
             }
         }
     }
@@ -131,19 +157,24 @@ public class DoorManager implements Listener {
 
         DoorData data = doorDataManager.loadDoorData(lockedDoor);
         if (data == null) {
-            // Not locked — only clean up if the block itself is the door
-            if (isDoor(block)) doorDataManager.deleteDoorData(lockedDoor);
+            if (isDoor(block)) {
+                doorDataManager.deleteDoorData(lockedDoor);
+            }
             return;
         }
 
-        // Check key
-        String keyUUID = getKeyUUID(player.getInventory().getItemInMainHand());
-        if (keyUUID != null && keyUUID.equals(data.getKey())) {
+        if (player.getGameMode() == GameMode.CREATIVE) {
+            scheduleLockRemovalAfterBreak(event, lockedDoor, block.getType());
+            return;
+        }
+
+        if (KeychainHandler.matchesDoor(player.getInventory().getItemInMainHand(), data.getKey(),
+                DoorKeyPurpose.UNLOCK_OR_BREAK)) {
             // Correct key held — allow break and always clean up door data
             doorDataManager.deleteDoorData(lockedDoor);
         } else {
             event.setCancelled(true);
-            player.sendTitle(ChatColor.RED + "This door is locked.", "", 5, 30, 10);
+            player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "This door is locked."), "", 5, 30, 10);
         }
     }
 
@@ -205,6 +236,9 @@ public class DoorManager implements Listener {
     private String getOrCreateKeyUUID(ItemStack item) {
         String existing = getKeyUUID(item);
         if (existing != null) return existing;
+        if (!ToolResolver.isMasterKey(item)) {
+            return null;
+        }
         String newUUID = UUID.randomUUID().toString();
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(Keys.keyUUIDKey, PersistentDataType.STRING, newUUID);
@@ -212,11 +246,27 @@ public class DoorManager implements Listener {
         return newUUID;
     }
 
+    private void consumePaperKey(Player player, ItemStack heldItem, String doorKeyUuid) {
+        if (KeyCopyHandler.isPaperCopy(heldItem)) {
+            ItemStack hand = player.getInventory().getItemInMainHand();
+            if (hand.getAmount() <= 1) {
+                player.getInventory().setItemInMainHand(null);
+            } else {
+                hand.setAmount(hand.getAmount() - 1);
+            }
+            return;
+        }
+        if (KeychainHandler.isKeychain(heldItem)) {
+            ItemStack updated = KeychainHandler.consumePaperKeyForDoor(heldItem, doorKeyUuid);
+            player.getInventory().setItemInMainHand(updated);
+        }
+    }
+
     // --- Lockpick helpers ---
 
     private void startLockpicking(Player player, Location canonical, DoorData data) {
         if (!DoorLockpickUtil.isWithinDoorRange(player, canonical, Parameters.doorMaxDistance)) {
-            player.sendMessage(ChatColor.RED + "You are too far from the door.");
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You are too far from the door."));
             return;
         }
         if (!ClueChecker.hasEnoughClues(player)) {
@@ -225,19 +275,26 @@ public class DoorManager implements Listener {
         }
         GuildChecker.LockpickAccessResult access = GuildChecker.checkLockpickAccess(data.getOwnerUUID());
         if (access.type == GuildChecker.LockpickAccessResult.Type.DENY) {
-            player.sendMessage(ChatColor.RED + access.message);
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + access.message));
             return;
         }
         if (access.type == GuildChecker.LockpickAccessResult.Type.WARN) {
-            player.sendMessage(ChatColor.YELLOW + access.message);
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.WARN + access.message));
         }
         double debuffFactor = lockPickManager.getDebuffFactor(player.getUniqueId());
         if (debuffFactor > 0) {
             int penalty = (int) Math.round(debuffFactor * 100);
             long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId());
-            player.sendMessage(ChatColor.YELLOW + "Lockpicking with " + penalty + "% penalty (" + seconds + "s)");
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.WARN + "Lockpicking with " + penalty + "% penalty (" + seconds + "s)"));
         }
         double lockpickStrength = ToolResolver.getLockpickStrength(player.getInventory().getItemInMainHand());
+        double requiredStrength = data.getStrength() * Parameters.lockpickMinLockStrengthRatio;
+        if (lockpickStrength < requiredStrength) {
+            int requiredPercent = (int) Math.round(Parameters.lockpickMinLockStrengthRatio * 100);
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Your lockpick is too weak for this lock."
+                    + " You need a pick at least " + requiredPercent + "% as strong as the lock."));
+            return;
+        }
         double effectiveStrength = data.getStrength() * (1.0 - Math.min(1.0, lockpickStrength) * Parameters.lockpickMaxReduction);
         int dexterity = DexterityHelper.getDexterity(player);
 
@@ -245,8 +302,8 @@ public class DoorManager implements Listener {
         thiefData.addRiskGain(dexterity, lockpickStrength, RiskSource.DOOR);
         Database.savePlayerData(thiefData);
 
-        player.sendMessage(ChatColor.RED + "Walk away from the door to cancel.");
-        lockPickManager.startSession(player, canonical, effectiveStrength, dexterity, lockpickStrength);
+        player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Walk away from the door to cancel."));
+        lockPickManager.startDoorSession(player, canonical, effectiveStrength, dexterity, lockpickStrength);
     }
 
     private void handleSelectResult(Player player, LockPickManager.SelectResult result, Location canonical) {
@@ -261,12 +318,12 @@ public class DoorManager implements Listener {
                     doorData.setUnlockExpiryMs(System.currentTimeMillis() + Parameters.doorUnlockWindowMs);
                     doorDataManager.saveDoorData(doorData);
                 }
-                player.sendTitle(ChatColor.GREEN + "Picked!", "", 5, 40, 10);
+                player.sendTitle(ThieveryTexts.msg(ThieveryTexts.SUCCESS + "Picked!"), "", 5, 40, 10);
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_WOODEN_DOOR_OPEN, 0.15f, 1.2f);
                 ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
             case FAIL -> {
-                player.sendTitle(ChatColor.RED + "Failed!", "", 5, 40, 10);
+                player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "Failed!"), "", 5, 40, 10);
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_IRON_TRAPDOOR_OPEN, 4.5f, 0.8f);
                 ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
@@ -277,13 +334,37 @@ public class DoorManager implements Listener {
                 } else {
                     player.getInventory().setItemInMainHand(null);
                 }
-                player.sendTitle(ChatColor.RED + "Lockpick broke!", "", 5, 40, 10);
+                player.sendTitle(ThieveryTexts.msg(ThieveryTexts.ERROR + "Lockpick broke!"), "", 5, 40, 10);
                 canonical.getWorld().playSound(canonical, Sound.BLOCK_IRON_TRAPDOOR_OPEN, 4.5f, 0.8f);
                 canonical.getWorld().playSound(canonical, Sound.ENTITY_ITEM_BREAK, 4.5f, 1f);
                 ClueDropper.tryDropDoorClue(player, canonical, ownerUUID, dexterity, lockpickStrength);
             }
             default -> {}
         }
+    }
+
+    private void playLockToggleSound(Location canonical) {
+        canonical.getWorld().playSound(canonical, Sound.BLOCK_IRON_TRAPDOOR_OPEN, 1.0f, 1.0f);
+    }
+
+    private void showDebugLockInfo(Player player, Location canonical) {
+        DoorData data = doorDataManager.loadDoorData(canonical);
+        if (data == null || data.getOwnerUUID() == null) {
+            player.sendMessage(ThieveryTexts.MUTED + "This door is not locked.");
+            return;
+        }
+        OfflinePlayer owner = Bukkit.getOfflinePlayer(data.getOwnerUUID());
+        String name = owner.getName() != null ? owner.getName() : data.getOwnerUUID().toString();
+        player.sendMessage(ThieveryTexts.msg(ThieveryTexts.INFO + "Door was locked by " + ThieveryTexts.INFO + name));
+    }
+
+    private void scheduleLockRemovalAfterBreak(BlockBreakEvent event, Location lockedDoor, Material brokenType) {
+        Bukkit.getScheduler().runTaskLater(Thievery.getInstance(), () -> {
+            if (lockedDoor.getBlock().getType() == brokenType) {
+                return;
+            }
+            doorDataManager.deleteDoorData(lockedDoor);
+        }, 5L);
     }
 
     private boolean isUnlockWindowActive(DoorData data) {

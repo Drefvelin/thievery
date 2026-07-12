@@ -6,22 +6,58 @@ traits:
 
 keys:
   iron_key:
-    item: "v.iron_nugget"
+    item: "m.keys.iron_key"
     strength: 0.2
   gold_key:
-    item: "v.gold_nugget"
+    item: "m.keys.gold_key"
     strength: 0.5
 
 lockpicks:
   iron_lockpick:
-    item: "v.iron_ingot"
+    item: "m.lockpicks.basic_lockpick_set"
     strength: 0.35
     capacity: 30
+
+keychain:
+  item: m.keys.key_chain
+  max-keys: 5
+  lore-line-start: 5
+  model-by-count:
+    0: 68
+    1: 69
+    2: 70
+    3: 71
+    4: 72
+    5: 73
+
+key-copy:
+  paper-cooldown-minutes: 240
+
+  mold:
+    input: v.clay_ball
+    output: m.utils.key_mold
+
+  copy:
+    input: v.copper_ingot
+    output: m.keys.copper_key
+
+  paper:
+    input: v.paper
+    output: m.keys.paper_key
+
+doors:
+  debug-tool: m.misc.door_locks_debug_tool
 
 category_points: 30
 point_gain_interval: 24
 
-default_value: 0.1
+default_item_value: 0.1
+
+tier-values:
+  1: 1.0
+  2: 2.0
+  3: 4.0
+  4: 8.0
 
 masks:
   ghost_mask:
@@ -67,25 +103,43 @@ clues:
   recent-max: 6
   recent-cooldown-hours: 1
   critical-cooldown-hours: 24
+  min-clues-door: 0
+  min-clues-container: 1
   risk-gain-door:
     min: 0.05
     max: 0.15
   risk-gain-chest:
     min: 0.025
     max: 0.075
+  risk-gain-pickpocket:
+    min: 0.04
+    max: 0.12
   risk-pick-reduction: 0.5
   risk-decay-per-hour: 0.08
   critical-base: 0.0
   critical-risk-weight: 0.5
   critical-dex-reduction: 0.15
   critical-strength-reduction: 0.2
-  critical-clue: "§7This seems to be the work of {character_name}"
+  take-value-scale: 12.0
+  take-value-max-bonus: 0.35
+  take-clue-divisor: 10
+  critical-clue: "§7This seems to be the work of #d6cf69{character_name}"
 
 lockpicking:
+  require-owner-online: false
+  debug-allow-own-chest: true
+  debug-clue-preview: true
   door-max-distance: 3
   lockpick-max-reduction: 0.5
+  min-lock-strength-ratio: 0.5
+  max-success-chance: 0.95
+  dex-map:
+    0: 1.0
+    40: 4.0
   fail-cooldown-ms: 60000
   door-unlock-window-minutes: 60
+  excluded-containers:
+    - ENDER_CHEST
 
   bar:
     length: 20
@@ -101,4 +155,29 @@ lockpicking:
   attribute: dexterity
 
   chest:
-    base-chance: 0.5
+    base-success-chance: 1.0
+    break-chance-ramp-per-slot: 0.1
+
+robbery:
+  traits:
+    - bandit
+  budget: 30
+  cooldown-days: 3
+  duration-seconds: 120
+  max-distance: 4
+  accept-timeout-seconds: 30
+  ignore:
+    name-contains:
+      - Slot
+
+pickpocket:
+  traits:
+    - thief
+  budget: 10
+  cooldown-hours: 1
+  max-distance: 4
+  alert-subtitle: "#d65c5cSomeone is pickpocketing you!"
+  alert-subtitle-critical: "#d65c5c{character_name} is pickpocketing you!"
+  ignore:
+    name-contains:
+      - Slot

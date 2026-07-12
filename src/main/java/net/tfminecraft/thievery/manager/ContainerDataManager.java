@@ -84,4 +84,64 @@ public class ContainerDataManager {
         String fileName = loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ() + ".json";
         return new File(new File(dataFolder, chunkFolder), fileName);
     }
+
+    public void removePlayerFromAllAccessMaps(UUID playerId) {
+        if (playerId == null) {
+            return;
+        }
+        forEachContainerFile(file -> updateAccessMap(file, map -> map.remove(playerId) != null));
+    }
+
+    public void clearAllAccessMaps() {
+        forEachContainerFile(file -> updateAccessMap(file, map -> {
+            if (map.isEmpty()) {
+                return false;
+            }
+            map.clear();
+            return true;
+        }));
+    }
+
+    private interface AccessMapMutation {
+        boolean apply(java.util.Map<UUID, String> accessMap);
+    }
+
+    private void forEachContainerFile(java.util.function.Consumer<File> action) {
+        if (!dataFolder.exists()) {
+            return;
+        }
+        File[] chunkDirs = dataFolder.listFiles(File::isDirectory);
+        if (chunkDirs == null) {
+            return;
+        }
+        for (File chunkDir : chunkDirs) {
+            File[] files = chunkDir.listFiles((dir, name) -> name.endsWith(".json"));
+            if (files == null) {
+                continue;
+            }
+            for (File file : files) {
+                action.accept(file);
+            }
+        }
+    }
+
+    private void updateAccessMap(File file, AccessMapMutation mutation) {
+        try (Reader reader = new FileReader(file)) {
+            ContainerDataJson json = gson.fromJson(reader, ContainerDataJson.class);
+            if (json == null) {
+                return;
+            }
+            if (json.accessMap == null) {
+                json.accessMap = new HashMap<>();
+            }
+            if (!mutation.apply(json.accessMap)) {
+                return;
+            }
+            try (Writer writer = new FileWriter(file)) {
+                gson.toJson(json, writer);
+            }
+        } catch (IOException e) {
+            Bukkit.getLogger().warning("Failed to update container cooldown data for " + file + ": " + e.getMessage());
+        }
+    }
 }

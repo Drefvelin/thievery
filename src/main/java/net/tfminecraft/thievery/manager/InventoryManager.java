@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -27,6 +26,7 @@ import net.tfminecraft.thievery.data.LoadoutSession.ToggleResult;
 import net.tfminecraft.thievery.data.PlayerData;
 import net.tfminecraft.thievery.holder.LoadoutHolder;
 import net.tfminecraft.thievery.loader.CategoryLoader;
+import net.tfminecraft.thievery.util.ThieveryTexts;
 import net.tfminecraft.util.Keys;
 
 public class InventoryManager implements Listener {
@@ -43,44 +43,56 @@ public class InventoryManager implements Listener {
     public void openLoadout(Player player) {
         PlayerData playerData = Thievery.getPlayerManager().get(player);
         sessions.put(player.getUniqueId(), LoadoutSession.from(playerData));
-        renderLoadout(player, 0);
+        renderLoadout(player, 0, true);
     }
 
-    private void renderLoadout(Player player, int page) {
+    private void renderLoadout(Player player, int page, boolean open) {
         LoadoutSession session = sessions.get(player.getUniqueId());
         if (session == null) return;
 
-        List<ItemCategory> categories = CategoryLoader.getAsList();
+        List<ItemCategory> categories = CategoryLoader.getLoadoutCategories();
         int maxPage = Math.max(0, (categories.size() - 1) / CATEGORIES_PER_PAGE);
         int safePage = Math.max(0, Math.min(page, maxPage));
 
-        Inventory inv = Bukkit.createInventory(
-                new LoadoutHolder(player.getUniqueId(), safePage),
-                INVENTORY_SIZE,
-                buildTitle(session)
-        );
+        Inventory inv;
+        if (open) {
+            inv = Bukkit.createInventory(
+                    new LoadoutHolder(player.getUniqueId(), safePage),
+                    INVENTORY_SIZE,
+                    buildTitle(session)
+            );
+        } else {
+            if (!(player.getOpenInventory().getTopInventory().getHolder() instanceof LoadoutHolder holder)) {
+                return;
+            }
+            holder.setPage(safePage);
+            inv = player.getOpenInventory().getTopInventory();
+            inv.clear();
+            player.getOpenInventory().setTitle(buildTitle(session));
+        }
 
         int start = safePage * CATEGORIES_PER_PAGE;
         int end = Math.min(start + CATEGORIES_PER_PAGE, categories.size());
         for (int i = start; i < end; i++) {
             ItemCategory category = categories.get(i);
             boolean active = session.getDraftActive().contains(category.getId());
-            boolean unlocked = session.isSessionUnlocked(category.getId());
-            ItemStack icon = category.getIconItem(active, unlocked && !active);
+            ItemStack icon = category.getIconItem(active);
             if (icon != null) {
                 inv.setItem(i - start, icon);
             }
         }
 
         fillBottomBar(inv, safePage, maxPage);
-        player.openInventory(inv);
+        if (open) {
+            player.openInventory(inv);
+        }
     }
 
     private String buildTitle(LoadoutSession session) {
-        return ChatColor.DARK_GRAY + "Thievery Loadout " + ChatColor.GRAY + "("
-                + ChatColor.GREEN + session.getDraftBank() + ChatColor.GRAY + " bank · "
-                + ChatColor.YELLOW + session.getDraftAllocated() + ChatColor.GRAY + "/"
-                + ChatColor.GREEN + Cache.categoryPoints + ChatColor.GRAY + ")";
+        return ThieveryTexts.msg(ThieveryTexts.DARK + "Loadout " + ThieveryTexts.MUTED + "("
+                + ThieveryTexts.SUCCESS + session.getDraftBank() + ThieveryTexts.MUTED + " bank · "
+                + ThieveryTexts.WARN + session.getDraftAllocated() + ThieveryTexts.MUTED + "/"
+                + ThieveryTexts.SUCCESS + Cache.categoryPoints + ThieveryTexts.MUTED + ")");
     }
 
     private void fillBottomBar(Inventory inv, int page, int maxPage) {
@@ -90,17 +102,23 @@ public class InventoryManager implements Listener {
             }
         }
 
-        inv.setItem(SLOT_CANCEL, createButton(Material.RED_DYE, "§cCancel", "§7Discard changes"));
-        inv.setItem(SLOT_CONFIRM, createButton(Material.LIME_DYE, "§aConfirm", "§7Apply loadout"));
+        inv.setItem(SLOT_CANCEL, createButton(Material.RED_DYE,
+                ThieveryTexts.msg(ThieveryTexts.ERROR + "Cancel"),
+                ThieveryTexts.msg(ThieveryTexts.MUTED + "Discard changes")));
+        inv.setItem(SLOT_CONFIRM, createButton(Material.LIME_DYE,
+                ThieveryTexts.msg(ThieveryTexts.SUCCESS + "Confirm"),
+                ThieveryTexts.msg(ThieveryTexts.MUTED + "Apply loadout")));
 
         if (page > 0) {
-            inv.setItem(SLOT_PREV_PAGE, createButton(Material.ARROW, "§ePrevious Page", null));
+            inv.setItem(SLOT_PREV_PAGE, createButton(Material.ARROW,
+                    ThieveryTexts.msg(ThieveryTexts.WARN + "Previous Page"), null));
         } else {
             inv.setItem(SLOT_PREV_PAGE, createFiller());
         }
 
         if (page < maxPage) {
-            inv.setItem(SLOT_NEXT_PAGE, createButton(Material.ARROW, "§eNext Page", null));
+            inv.setItem(SLOT_NEXT_PAGE, createButton(Material.ARROW,
+                    ThieveryTexts.msg(ThieveryTexts.WARN + "Next Page"), null));
         } else {
             inv.setItem(SLOT_NEXT_PAGE, createFiller());
         }
@@ -110,7 +128,7 @@ public class InventoryManager implements Listener {
         ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName("§8 ");
+            meta.setDisplayName(ThieveryTexts.msg(ThieveryTexts.DARK + " "));
             item.setItemMeta(meta);
         }
         return item;
@@ -173,19 +191,21 @@ public class InventoryManager implements Listener {
             switch (result) {
                 case TOGGLED_ON, TOGGLED_OFF -> {
                     player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BIT, 1f, 1f);
-                    renderLoadout(player, holder.getPage());
+                    renderLoadout(player, holder.getPage(), false);
                 }
                 case NO_CHANGE -> {}
                 case ALLOCATION_FULL -> {
-                    player.sendMessage(ChatColor.RED + "You cannot allocate more than " + Cache.categoryPoints + " points.");
+                    player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You cannot allocate more than "
+                            + Cache.categoryPoints + " points."));
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
                 case NOT_ENOUGH_BANK -> {
-                    player.sendMessage(ChatColor.RED + "You do not have enough bank points for that category.");
+                    player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR
+                            + "You do not have enough bank points for that category."));
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
                 case UNKNOWN_CATEGORY -> {
-                    player.sendMessage(ChatColor.RED + "Unknown category.");
+                    player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Unknown category."));
                     player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 }
             }
@@ -193,15 +213,15 @@ public class InventoryManager implements Listener {
         }
 
         if (slot == SLOT_PREV_PAGE && holder.getPage() > 0) {
-            renderLoadout(player, holder.getPage() - 1);
+            renderLoadout(player, holder.getPage() - 1, false);
             return;
         }
 
         if (slot == SLOT_NEXT_PAGE) {
-            List<ItemCategory> categories = CategoryLoader.getAsList();
+            List<ItemCategory> categories = CategoryLoader.getLoadoutCategories();
             int maxPage = Math.max(0, (categories.size() - 1) / CATEGORIES_PER_PAGE);
             if (holder.getPage() < maxPage) {
-                renderLoadout(player, holder.getPage() + 1);
+                renderLoadout(player, holder.getPage() + 1, false);
             }
             return;
         }
@@ -213,7 +233,7 @@ public class InventoryManager implements Listener {
 
         if (slot == SLOT_CONFIRM) {
             if (!session.canConfirm()) {
-                player.sendMessage(ChatColor.RED + "You cannot confirm this loadout.");
+                player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You cannot confirm this loadout."));
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
                 return;
             }

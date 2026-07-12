@@ -1,11 +1,19 @@
 package net.tfminecraft.thievery.cache;
 
+import java.util.EnumSet;
+import java.util.Set;
+
+import org.bukkit.Material;
+
 /**
  * Central tuning parameters for the door locking and lockpicking system.
  */
 public class Parameters {
 
     public static double lockpickMaxReduction = 0.5;
+
+    /** Minimum lockpick strength as a fraction of door lock strength (e.g. 0.5 = 50%). */
+    public static double lockpickMinLockStrengthRatio = 0.5;
 
     public static long lockpickFailCooldownMs = 60_000L;
 
@@ -22,9 +30,16 @@ public class Parameters {
 
     public static String lockpickAttribute = "dexterity";
 
-    public static double chestBaseChance = 0.5;
+    public static double chestBaseSuccessChance = 1.0;
+
+    /** Per-slot break multiplier step (1st reveal = 1×step, 2nd = 2×step, … capped at full break chance). */
+    public static double chestBreakChanceRampPerSlot = 0.1;
+
+    public static double maxSuccessChance = 0.95;
 
     public static double doorMaxDistance = 3.0;
 
     public static long doorUnlockWindowMs = 60L * 60L * 1000L;
+
+    public static Set<Material> excludedContainerMaterials = EnumSet.of(Material.ENDER_CHEST);
 }

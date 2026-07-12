@@ -19,31 +19,25 @@ public class LoadoutSession {
 
     private final Set<String> savedActive;
     private final Set<String> draftActive;
-    private final Set<String> sessionUnlocked;
-    private int draftBank;
+    private final int startingBank;
 
-    public LoadoutSession(Set<String> savedActive, Set<String> draftActive, Set<String> sessionUnlocked, int draftBank) {
+    public LoadoutSession(Set<String> savedActive, Set<String> draftActive, int startingBank) {
         this.savedActive = new HashSet<>(savedActive);
         this.draftActive = new HashSet<>(draftActive);
-        this.sessionUnlocked = new HashSet<>(sessionUnlocked);
-        this.draftBank = draftBank;
+        this.startingBank = startingBank;
     }
 
     public static LoadoutSession from(PlayerData playerData) {
         Set<String> active = new HashSet<>(playerData.getActiveCategories());
-        return new LoadoutSession(active, active, active, playerData.getPoints());
+        return new LoadoutSession(active, active, playerData.getPoints());
     }
 
     public int getDraftBank() {
-        return draftBank;
+        return startingBank - getNewSelectionCost(draftActive);
     }
 
     public Set<String> getDraftActive() {
         return draftActive;
-    }
-
-    public boolean isSessionUnlocked(String categoryId) {
-        return sessionUnlocked.contains(categoryId);
     }
 
     public int getDraftAllocated() {
@@ -60,9 +54,6 @@ public class LoadoutSession {
 
         if (draftActive.contains(categoryId)) {
             draftActive.remove(categoryId);
-            if (!savedActive.contains(categoryId)) {
-                draftBank = Math.min(draftBank + category.getCost(), Cache.categoryPoints);
-            }
             return ToggleResult.TOGGLED_OFF;
         }
 
@@ -70,15 +61,26 @@ public class LoadoutSession {
             return ToggleResult.ALLOCATION_FULL;
         }
 
-        if (!sessionUnlocked.contains(categoryId)) {
-            if (draftBank < category.getCost()) {
+        if (!savedActive.contains(categoryId)) {
+            int newSelectionCost = getNewSelectionCost(draftActive) + category.getCost();
+            if (newSelectionCost > startingBank) {
                 return ToggleResult.NOT_ENOUGH_BANK;
             }
-            draftBank -= category.getCost();
-            sessionUnlocked.add(categoryId);
         }
 
         draftActive.add(categoryId);
         return ToggleResult.TOGGLED_ON;
+    }
+
+    private int getNewSelectionCost(Set<String> active) {
+        int total = 0;
+        for (String id : active) {
+            if (savedActive.contains(id)) continue;
+            ItemCategory cat = CategoryLoader.getById(id);
+            if (cat != null) {
+                total += cat.getCost();
+            }
+        }
+        return total;
     }
 }

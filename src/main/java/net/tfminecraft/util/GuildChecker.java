@@ -7,6 +7,7 @@ import org.bukkit.OfflinePlayer;
 
 import me.Plugins.SimpleFactions.Guild.Guild;
 import me.Plugins.SimpleFactions.Managers.FactionManager;
+import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.cache.LockpickTargetCache;
 import net.tfminecraft.thievery.util.TargetKeyResolver;
 
@@ -28,6 +29,9 @@ public class GuildChecker {
      */
     public static LockpickAccessResult checkLockpickAccess(UUID ownerUUID) {
         if (ownerUUID == null) return new LockpickAccessResult(LockpickAccessResult.Type.ALLOWED, null);
+        if (!Cache.requireOwnerOnline) {
+            return new LockpickAccessResult(LockpickAccessResult.Type.ALLOWED, null);
+        }
         OfflinePlayer owner = Bukkit.getOfflinePlayer(ownerUUID);
         String ownerName = owner.getName();
         if (ownerName == null) return new LockpickAccessResult(LockpickAccessResult.Type.ALLOWED, null);

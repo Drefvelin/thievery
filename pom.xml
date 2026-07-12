@@ -51,6 +51,27 @@
         </dependency>
         <dependency>
             <groupId>local</groupId>
+            <artifactId>MMOItems</artifactId>
+            <version>6.10</version>
+            <scope>system</scope>
+            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/MMOItems-6.10.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>local</groupId>
+            <artifactId>MythicLib</artifactId>
+            <version>1.6.1</version>
+            <scope>system</scope>
+            <systemPath>D:/Dokumenter/My Plugins/Reference Libs/MythicLib-1.7.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>local</groupId>
+            <artifactId>AdvancedCrafting</artifactId>
+            <version>1.1.7</version>
+            <scope>system</scope>
+            <systemPath>D:/Dokumenter/My Plugins/TFMC/AdvancedCrafting/advancedcrafting-1.1.7.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>local</groupId>
             <artifactId>TLibs</artifactId>
             <version>1.0</version>
             <scope>system</scope>

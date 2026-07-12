@@ -8,7 +8,7 @@ import org.bukkit.inventory.InventoryHolder;
 public class LoadoutHolder implements InventoryHolder {
 
     private final UUID playerId;
-    private final int page;
+    private int page;
 
     public LoadoutHolder(UUID playerId, int page) {
         this.playerId = playerId;
@@ -21,6 +21,10 @@ public class LoadoutHolder implements InventoryHolder {
 
     public int getPage() {
         return page;
+    }
+
+    public void setPage(int page) {
+        this.page = page;
     }
 
     @Override

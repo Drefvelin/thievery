@@ -121,6 +121,10 @@ public class PlayerManager implements Listener {
         data.remove(id);
     }
 
+    public Iterable<UUID> getLoadedIds() {
+        return new ArrayList<>(data.keySet());
+    }
+
     @EventHandler
     public void onJoin(PlayerJoinEvent e) {
         init(e.getPlayer());

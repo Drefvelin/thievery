@@ -5,13 +5,13 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
 import net.tfminecraft.thievery.data.MaskChannelOverride;
 import net.tfminecraft.thievery.loader.MaskLoader;
 import net.tfminecraft.thievery.util.MaskFormatter;
+import net.tfminecraft.thievery.util.ThieveryTexts;
 
 public final class MaskManager {
 
@@ -30,18 +30,19 @@ public final class MaskManager {
         String defaultCommand = MaskLoader.DEFAULT_MASKED_COMMAND;
         String others = commands.stream()
                 .filter(command -> !command.equalsIgnoreCase(defaultCommand))
-                .map(command -> ChatColor.WHITE + "/" + command)
-                .collect(Collectors.joining(ChatColor.RED + ", "));
+                .map(command -> ThieveryTexts.WHITE + "/" + command)
+                .collect(Collectors.joining(ThieveryTexts.ERROR + ", "));
 
         StringBuilder message = new StringBuilder();
-        message.append(ChatColor.RED).append("While wearing a mask, use ");
-        message.append(ChatColor.WHITE).append("/").append(defaultCommand).append(" <message>");
+        message.append(ThieveryTexts.ERROR).append("While wearing a mask, use ");
+        message.append(ThieveryTexts.WHITE).append("/").append(defaultCommand).append(" <message>");
         if (!others.isEmpty()) {
-            message.append(ChatColor.RED).append(" or another channel (").append(others).append(ChatColor.RED).append(").");
+            message.append(ThieveryTexts.ERROR).append(" or another channel (").append(others)
+                    .append(ThieveryTexts.ERROR).append(").");
         } else {
-            message.append(ChatColor.RED).append(".");
+            message.append(ThieveryTexts.ERROR).append(".");
         }
-        player.sendMessage(message.toString());
+        player.sendMessage(ThieveryTexts.msg(message.toString()));
     }
 
     public static void broadcastMasked(Player sender, String channelKey, String message) {

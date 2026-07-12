@@ -1,0 +1,176 @@
+package net.tfminecraft.thievery.util;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.data.PlayerData;
+import net.tfminecraft.util.Keys;
+
+public final class StealItemDisplay {
+
+    public record ChestCluePreviewContext(
+            Player player,
+            int dexterity,
+            double lockpickStrength,
+            double sessionRisk,
+            int successfulClueDrops
+    ) {}
+
+    private StealItemDisplay() {}
+
+    public static int computeDisplayAmount(ItemStack realItem, double budgetRemaining, PlayerData thiefData) {
+        if (realItem == null || realItem.getType().isAir()) {
+            return 0;
+        }
+        if (BundleHandler.isBundle(realItem)) {
+            if (BundleHandler.hasStealableContents(thiefData, realItem, budgetRemaining)) {
+                return 1;
+            }
+            int takeable = StealBudget.computeTakeableAmount(realItem, budgetRemaining);
+            return takeable > 0 ? 1 : 0;
+        }
+        if (!CategoryResolver.canRevealItem(thiefData, realItem)) {
+            return 0;
+        }
+        int takeable = StealBudget.computeTakeableAmount(realItem, budgetRemaining);
+        if (takeable <= 0) {
+            return 0;
+        }
+        return realItem.getAmount();
+    }
+
+    public static ItemStack buildRepresentation(ItemStack realItem, double budgetRemaining, PlayerData thiefData) {
+        return buildRepresentation(realItem, budgetRemaining, thiefData, null);
+    }
+
+    public static ItemStack buildRepresentation(ItemStack realItem, double budgetRemaining, PlayerData thiefData,
+            ChestCluePreviewContext cluePreview) {
+        if (!CategoryResolver.canRevealItem(thiefData, realItem)) {
+            return StealGuiPanes.createHiddenPane();
+        }
+
+        int displayAmount = computeDisplayAmount(realItem, budgetRemaining, thiefData);
+        if (displayAmount <= 0) {
+            return null;
+        }
+
+        ItemStack display;
+        if (BundleHandler.isBundle(realItem)) {
+            display = BundleHandler.buildDisplayBundle(thiefData, realItem);
+            if (display == null) {
+                return StealGuiPanes.createHiddenPane();
+            }
+        } else {
+            display = realItem.clone();
+            display.setAmount(displayAmount);
+        }
+
+        ItemMeta meta = display.getItemMeta();
+        if (meta == null) {
+            return display;
+        }
+
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        lore.add("");
+        if (BundleHandler.isBundle(realItem)) {
+            List<String> contentsLore = BundleHandler.getRevealableContentsLore(thiefData, realItem);
+            if (!contentsLore.isEmpty()) {
+                lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Items:"));
+                lore.addAll(contentsLore);
+                lore.add("");
+            }
+            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Total Value: " + ThieveryTexts.SUCCESS
+                    + formatValue(CategoryResolver.getTotalValue(realItem))));
+            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Click " + ThieveryTexts.MUTED + "to take one item"));
+            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take all you can"));
+        } else {
+            int takeable = StealBudget.computeTakeableAmount(realItem, budgetRemaining);
+            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Total Value: " + ThieveryTexts.SUCCESS
+                    + formatValue(CategoryResolver.getTotalValue(display))));
+            if (takeable < realItem.getAmount()) {
+                lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Can take up to " + ThieveryTexts.INFO + takeable
+                        + " " + ThieveryTexts.MUTED + "with current budget"));
+            }
+            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Click " + ThieveryTexts.MUTED + "to take "
+                    + ThieveryTexts.INFO + "one"));
+            if (displayAmount > 1) {
+                lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take "
+                        + ThieveryTexts.INFO + "all"));
+            }
+        }
+        appendCluePreviewLore(lore, realItem, budgetRemaining, thiefData, cluePreview);
+        meta.setLore(lore);
+        display.setItemMeta(meta);
+        return display;
+    }
+
+    private static void appendCluePreviewLore(List<String> lore, ItemStack realItem, double budgetRemaining,
+            PlayerData thiefData, ChestCluePreviewContext cluePreview) {
+        if (cluePreview == null) {
+            return;
+        }
+
+        StealTakePreview.TakeValues values = StealTakePreview.estimate(
+                cluePreview.player(), thiefData, realItem, budgetRemaining);
+
+        boolean guaranteed = cluePreview.successfulClueDrops() < Cache.minCluesContainer;
+        RiskCalculator.TakeCluePreview one = RiskCalculator.computeTakeCluePreview(
+                cluePreview.sessionRisk(), values.valueOne(), cluePreview.dexterity(),
+                cluePreview.lockpickStrength(), guaranteed);
+        RiskCalculator.TakeCluePreview all = RiskCalculator.computeTakeCluePreview(
+                cluePreview.sessionRisk(), values.valueAll(), cluePreview.dexterity(),
+                cluePreview.lockpickStrength(), guaranteed);
+
+        lore.add("");
+        if (guaranteed) {
+            lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "First Take - Guaranteed Clue"));
+        }
+        lore.add(ThieveryTexts.format(ThieveryTexts.ERROR + "Clue chance: "
+                + formatClueLine(one.clueChance(), one.criticalOnTake())));
+        if (shouldShowAllPreview(values)) {
+            lore.add(ThieveryTexts.format(ThieveryTexts.ERROR + "Clue chance" + formatAllSuffix()
+                    + formatClueLine(all.clueChance(), all.criticalOnTake())));
+        }
+    }
+
+    private static String formatClueLine(double clueChance, double criticalOnTake) {
+        return RiskCalculator.formatPercentWhole(clueChance)
+                + ThieveryTexts.MUTED + " (critical "
+                + RiskCalculator.formatPercentWhole(criticalOnTake) + ")";
+    }
+
+    private static boolean shouldShowAllPreview(StealTakePreview.TakeValues values) {
+        return values.valueAll() > values.valueOne();
+    }
+
+    private static String formatAllSuffix() {
+        return ThieveryTexts.MUTED + " (" + ThieveryTexts.WARN + "all" + ThieveryTexts.MUTED + ")"+ThieveryTexts.ERROR+": ";
+    }
+
+    public static boolean isStealPane(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) {
+            return false;
+        }
+        var pdc = item.getItemMeta().getPersistentDataContainer();
+        return pdc.has(Keys.stealUnknown, org.bukkit.persistence.PersistentDataType.BYTE)
+                || pdc.has(Keys.stealFiller, org.bukkit.persistence.PersistentDataType.BYTE)
+                || pdc.has(Keys.stealNothing, org.bukkit.persistence.PersistentDataType.BYTE)
+                || pdc.has(Keys.stealHidden, org.bukkit.persistence.PersistentDataType.BYTE);
+    }
+
+    public static String formatValue(double value) {
+        return String.format("%.2f", value);
+    }
+
+    public static String formatTimeRemaining(long remainingMs) {
+        long totalSeconds = Math.max(0L, remainingMs / 1000L);
+        long minutes = totalSeconds / 60L;
+        long seconds = totalSeconds % 60L;
+        return minutes + ":" + String.format("%02d", seconds);
+    }
+}

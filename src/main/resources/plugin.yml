@@ -5,10 +5,14 @@ version: 1.0
 author: Drefvelin
 
 depend: [MMOCore, TLibs]
-softdepend: [OpenRP]
+softdepend: [OpenRP, AdvancedCrafting]
 loadbefore: [OpenRP]
 
 commands:
   thievery:
     useage: /<command>
     description: Thievery Command
+  robbery:
+    description: Robbery commands
+  pickpocket:
+    description: Pickpocket commands

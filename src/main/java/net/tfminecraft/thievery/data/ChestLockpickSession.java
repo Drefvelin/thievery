@@ -1,214 +1,71 @@
 package net.tfminecraft.thievery.data;
 
-
-
-import java.util.ArrayList;
-
-import java.util.Collections;
-
-import java.util.HashMap;
-
 import java.util.HashSet;
-
-import java.util.LinkedList;
-
-import java.util.List;
-
-import java.util.Map;
-
-import java.util.Queue;
-
 import java.util.Set;
 
-
-
 import org.bukkit.block.Block;
-
 import org.bukkit.inventory.Inventory;
 
-import org.bukkit.inventory.ItemStack;
-
-
-
-import net.tfminecraft.RPCharacters.Utils.ClueGiver;
-
 import net.tfminecraft.thievery.cache.Parameters;
-
-import net.tfminecraft.thievery.util.CategoryResolver;
-
-
+import net.tfminecraft.thievery.util.LockpickChance;
+import net.tfminecraft.thievery.util.StealBudget;
+import net.tfminecraft.thievery.util.StealGuiLayout;
 
 public class ChestLockpickSession {
 
-
-
-    public static final int SEARCH_GUI_SLOT = 8;
-
-    public static final int MASK_CHEST_SLOT = 8;
-
-
-
     private final Block chestBlock;
-
     private final LockpickDefinition lockpickDef;
-
     private final double successChance;
-
-    private final int inventorySize;
-
-    private final Queue<Integer> searchOrder;
-
-    private final int maskProxyChestSlot;
-
-    private final Map<Integer, Integer> guiSlotToChestSlot = new HashMap<>();
-
-    private boolean slot8Revealed;
-
-    private double capacityUsed;
+    private final StealGuiLayout layout;
+    private final Set<Integer> revealedGuiSlots = new HashSet<>();
+    private final StealBudget budget;
     private int successfulClueDrops;
     private final String targetKey;
+    private boolean lockpickBroken;
 
     public ChestLockpickSession(Block chestBlock, LockpickDefinition lockpickDef, double successChance,
             Inventory chestInventory, String targetKey) {
-
         this.chestBlock = chestBlock;
-
         this.lockpickDef = lockpickDef;
-
         this.successChance = successChance;
-
-        this.inventorySize = chestInventory.getSize();
-
-        this.maskProxyChestSlot = chooseMaskProxySlot(chestInventory);
-
-        this.searchOrder = buildSearchOrder(chestInventory);
-
+        this.layout = StealGuiLayout.create(chestInventory.getSize());
+        this.budget = new StealBudget(lockpickDef.getCapacity());
         this.targetKey = targetKey;
-
     }
-
-
 
     public static double computeSuccessChance(int dexterity, double lockpickStrength) {
-
-        double dexBonus = dexterity / 40.0;
-
-        return Math.min(1.0, Math.max(0.0, Parameters.chestBaseChance * (1.0 + dexBonus) * lockpickStrength));
-
+        return LockpickChance.computeSuccessChance(dexterity, lockpickStrength, Parameters.chestBaseSuccessChance);
     }
 
-
-
-    public static int chestSlotToGui(int chestSlot) {
-
-        if (chestSlot < SEARCH_GUI_SLOT) return chestSlot;
-
-        return chestSlot + 1;
-
+    public boolean isRevealed(int guiSlot) {
+        return revealedGuiSlots.contains(guiSlot);
     }
 
-
-
-    public static int computeTakeableAmount(ItemStack realItem, double capacityRemaining) {
-
-        if (realItem == null || realItem.getType().isAir()) return 0;
-
-        if (ClueGiver.isClueItem(realItem)) return 0;
-
-        double perItem = CategoryResolver.getPerItemValue(realItem);
-
-        if (perItem <= 0) return realItem.getAmount();
-
-        int maxByBudget = (int) Math.floor(capacityRemaining / perItem);
-
-        if (maxByBudget <= 0) return 0;
-
-        return Math.min(realItem.getAmount(), maxByBudget);
-
+    public void markRevealed(int guiSlot) {
+        revealedGuiSlots.add(guiSlot);
     }
 
-
-
-    public int getRevealGuiSlot(int chestSlot) {
-
-        if (chestSlot == MASK_CHEST_SLOT) {
-
-            return chestSlotToGui(maskProxyChestSlot);
-
-        }
-
-        return chestSlotToGui(chestSlot);
-
+    public Set<Integer> getRevealedGuiSlots() {
+        return new HashSet<>(revealedGuiSlots);
     }
-
-
-
-    public boolean hasMoreSearches() {
-
-        return !searchOrder.isEmpty();
-
-    }
-
-
-
-    public Integer pollNextChestSlot() {
-
-        return searchOrder.poll();
-
-    }
-
-
-
-    public void markRevealed(int chestSlot, int guiSlot) {
-
-        if (chestSlot == MASK_CHEST_SLOT) {
-
-            slot8Revealed = true;
-
-        }
-
-        guiSlotToChestSlot.put(guiSlot, chestSlot);
-
-    }
-
-
-
-    public Integer getChestSlotForGui(int guiSlot) {
-
-        return guiSlotToChestSlot.get(guiSlot);
-
-    }
-
-
-
-    public Map<Integer, Integer> getGuiSlotMappings() {
-
-        return guiSlotToChestSlot;
-
-    }
-
-
 
     public Set<Integer> getRevealedChestSlots() {
-
-        return new HashSet<>(guiSlotToChestSlot.values());
-
+        Set<Integer> chestSlots = new HashSet<>();
+        for (int guiSlot : revealedGuiSlots) {
+            Integer chestSlot = layout.getLogicalForGui(guiSlot);
+            if (chestSlot != null) {
+                chestSlots.add(chestSlot);
+            }
+        }
+        return chestSlots;
     }
-
-
 
     public double getCapacityRemaining() {
-
-        return Math.max(0.0, lockpickDef.getCapacity() - capacityUsed);
-
+        return budget.getRemaining();
     }
 
-
-
     public void addCapacityUsed(double value) {
-
-        capacityUsed += value;
-
+        budget.addUsed(value);
     }
 
     public int getSuccessfulClueDrops() {
@@ -220,140 +77,52 @@ public class ChestLockpickSession {
     }
 
     public Block getChestBlock() {
-
         return chestBlock;
-
     }
-
-
 
     public LockpickDefinition getLockpickDef() {
-
         return lockpickDef;
-
     }
-
-
 
     public double getSuccessChance() {
-
         return successChance;
-
     }
 
-
-
-    public int getInventorySize() {
-
-        return inventorySize;
-
+    public int getNextRevealAttempt() {
+        return revealedGuiSlots.size() + 1;
     }
 
-
-
-    public int getMaskProxyChestSlot() {
-
-        return maskProxyChestSlot;
-
+    public double getNextRevealBreakChance() {
+        return LockpickChance.computeRampedBreakChance(successChance, getNextRevealAttempt(),
+                Parameters.chestBreakChanceRampPerSlot);
     }
 
-
-
-    public boolean isSlot8Revealed() {
-
-        return slot8Revealed;
-
+    public double getNextRevealSuccessChance() {
+        return LockpickChance.computeRampedSuccessChance(successChance, getNextRevealAttempt(),
+                Parameters.chestBreakChanceRampPerSlot);
     }
 
+    public StealGuiLayout getLayout() {
+        return layout;
+    }
 
+    public StealBudget getBudget() {
+        return budget;
+    }
+
+    public int getGuiSize() {
+        return layout.getGuiSize();
+    }
 
     public String getTargetKey() {
-
         return targetKey;
-
     }
 
-
-
-    private static Queue<Integer> buildSearchOrder(Inventory inventory) {
-
-        List<Integer> slots = new ArrayList<>();
-
-        for (int i = 0; i < inventory.getSize(); i++) {
-
-            ItemStack item = inventory.getItem(i);
-
-            if (ClueGiver.isClueItem(item)) {
-
-                continue;
-
-            }
-
-            slots.add(i);
-
-        }
-
-        Collections.shuffle(slots);
-
-        return new LinkedList<>(slots);
-
+    public boolean isLockpickBroken() {
+        return lockpickBroken;
     }
 
-
-
-    private static int chooseMaskProxySlot(Inventory inventory) {
-
-        int size = inventory.getSize();
-
-        if (size <= MASK_CHEST_SLOT) return 0;
-
-
-
-        for (int i = 0; i < size; i++) {
-
-            if (i == MASK_CHEST_SLOT) continue;
-
-            ItemStack item = inventory.getItem(i);
-
-            if (ClueGiver.isClueItem(item)) continue;
-
-            if (item == null || item.getType().isAir()) {
-
-                return i;
-
-            }
-
-        }
-
-
-
-        int bestSlot = 0;
-
-        double bestValue = Double.MAX_VALUE;
-
-        for (int i = 0; i < size; i++) {
-
-            if (i == MASK_CHEST_SLOT) continue;
-
-            ItemStack item = inventory.getItem(i);
-
-            if (ClueGiver.isClueItem(item)) continue;
-
-            double value = CategoryResolver.getTotalValue(item);
-
-            if (value < bestValue) {
-
-                bestValue = value;
-
-                bestSlot = i;
-
-            }
-
-        }
-
-        return bestSlot;
-
+    public void markLockpickBroken() {
+        lockpickBroken = true;
     }
-
 }
-
