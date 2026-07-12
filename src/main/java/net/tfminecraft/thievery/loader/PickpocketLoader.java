@@ -6,8 +6,8 @@ import java.util.List;
 
 import org.bukkit.configuration.file.FileConfiguration;
 
-import net.tfminecraft.thievery.util.StealIgnoreRules;
-import net.tfminecraft.thievery.util.ThieveryTexts;
+import net.tfminecraft.thievery.steal.StealIgnoreRules;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class PickpocketLoader {
 

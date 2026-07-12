@@ -7,9 +7,9 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import net.tfminecraft.thievery.loader.RobberyLoader;
-import net.tfminecraft.thievery.manager.RobberyManager;
-import net.tfminecraft.thievery.util.ThieveryTexts;
-import net.tfminecraft.thievery.util.TraitChecker;
+import net.tfminecraft.thievery.robbery.RobberyManager;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
+import net.tfminecraft.thievery.player.TraitChecker;
 
 import java.util.ArrayList;
 import java.util.Collections;

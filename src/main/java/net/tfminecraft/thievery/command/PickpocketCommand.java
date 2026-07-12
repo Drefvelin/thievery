@@ -11,9 +11,9 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import net.tfminecraft.thievery.loader.PickpocketLoader;
-import net.tfminecraft.thievery.manager.PickpocketManager;
-import net.tfminecraft.thievery.util.ThieveryTexts;
-import net.tfminecraft.thievery.util.TraitChecker;
+import net.tfminecraft.thievery.player.PickpocketManager;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
+import net.tfminecraft.thievery.player.TraitChecker;
 
 public class PickpocketCommand implements CommandExecutor, TabCompleter {
 

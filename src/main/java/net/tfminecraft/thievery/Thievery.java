@@ -3,7 +3,7 @@ package net.tfminecraft.thievery;
 import java.io.File;
 
 import org.bukkit.Bukkit;
-import net.tfminecraft.thievery.util.ThieveryTexts;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,21 +16,22 @@ import net.tfminecraft.thievery.command.PickpocketCommand;
 import net.tfminecraft.thievery.command.RobberyCommand;
 import net.tfminecraft.thievery.loader.CategoryLoader;
 import net.tfminecraft.thievery.loader.ConfigLoader;
-import net.tfminecraft.thievery.manager.ClearCluesManager;
-import net.tfminecraft.thievery.manager.ContainerManager;
-import net.tfminecraft.thievery.manager.CooldownResetService;
-import net.tfminecraft.thievery.manager.DoorManager;
-import net.tfminecraft.thievery.manager.InventoryManager;
-import net.tfminecraft.thievery.manager.KeyCopyListener;
-import net.tfminecraft.thievery.manager.KeychainListener;
-import net.tfminecraft.thievery.manager.LockPickManager;
-import net.tfminecraft.thievery.manager.MaskChatListener;
-import net.tfminecraft.thievery.manager.MaskProfileBlockListener;
-import net.tfminecraft.thievery.manager.PickpocketManager;
-import net.tfminecraft.thievery.manager.PlayerManager;
-import net.tfminecraft.thievery.manager.RiskSetService;
-import net.tfminecraft.thievery.manager.RobberyManager;
-import net.tfminecraft.thievery.manager.StealGuiUpdater;
+import net.tfminecraft.thievery.clue.ClearCluesManager;
+import net.tfminecraft.thievery.door.ContainerManager;
+import net.tfminecraft.thievery.player.CooldownResetService;
+import net.tfminecraft.thievery.door.DoorManager;
+import net.tfminecraft.thievery.player.InventoryManager;
+import net.tfminecraft.thievery.key.KeyCopyListener;
+import net.tfminecraft.thievery.key.KeychainListener;
+import net.tfminecraft.thievery.door.LockPickManager;
+import net.tfminecraft.thievery.mask.MaskChatListener;
+import net.tfminecraft.thievery.mask.MaskProfileBlockListener;
+import net.tfminecraft.thievery.player.PickpocketManager;
+import net.tfminecraft.thievery.player.PlayerManager;
+import net.tfminecraft.thievery.player.RiskSetService;
+import net.tfminecraft.thievery.robbery.RobberyManager;
+import net.tfminecraft.thievery.steal.StealGuiUpdater;
+import net.tfminecraft.thievery.steal.StealManager;
 
 public class Thievery extends JavaPlugin {
 
@@ -40,6 +41,7 @@ public class Thievery extends JavaPlugin {
     private RobberyManager robberyManager;
     private PickpocketManager pickpocketManager;
     private LockPickManager lockPickManager;
+    private StealManager stealManager;
     private StealGuiUpdater stealGuiUpdater;
     private final ConfigLoader configLoader = new ConfigLoader();
     private final CategoryLoader categoryLoader = new CategoryLoader();
@@ -53,11 +55,12 @@ public class Thievery extends JavaPlugin {
         loadConfigs();
         setPlugins();
         containerManager = new ContainerManager();
+        stealManager = new StealManager();
         lockPickManager = new LockPickManager();
         doorManager = new DoorManager(lockPickManager);
         robberyManager = new RobberyManager();
         pickpocketManager = new PickpocketManager();
-        stealGuiUpdater = new StealGuiUpdater(robberyManager, pickpocketManager, containerManager);
+        stealGuiUpdater = new StealGuiUpdater(stealManager);
         stealGuiUpdater.start();
         CooldownResetService cooldownResetService = new CooldownResetService(lockPickManager);
         RiskSetService riskSetService = new RiskSetService();
@@ -72,6 +75,7 @@ public class Thievery extends JavaPlugin {
         getCommand("pickpocket").setExecutor(new PickpocketCommand(pickpocketManager));
         getCommand("pickpocket").setTabCompleter(new PickpocketCommand(pickpocketManager));
 
+        getServer().getPluginManager().registerEvents(stealManager, this);
         getServer().getPluginManager().registerEvents(clearCluesManager, this);
         getServer().getPluginManager().registerEvents(containerManager, this);
         getServer().getPluginManager().registerEvents(doorManager, this);

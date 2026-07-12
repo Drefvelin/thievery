@@ -18,10 +18,10 @@ import me.Plugins.TLibs.TLibs;
 import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
-import net.tfminecraft.thievery.data.AcCraftRef;
-import net.tfminecraft.thievery.data.CategoryMatchType;
-import net.tfminecraft.thievery.data.ItemCategory;
-import net.tfminecraft.thievery.data.ItemCategory.CategoryItemEntry;
+import net.tfminecraft.thievery.category.AcCraftRef;
+import net.tfminecraft.thievery.category.CategoryMatchType;
+import net.tfminecraft.thievery.category.ItemCategory;
+import net.tfminecraft.thievery.category.ItemCategory.CategoryItemEntry;
 
 public class CategoryLoader implements LoaderInterface {
 

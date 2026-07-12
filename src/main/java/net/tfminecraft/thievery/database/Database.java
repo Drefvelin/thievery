@@ -11,7 +11,7 @@ import java.util.UUID;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import net.tfminecraft.thievery.data.PlayerData;
+import net.tfminecraft.thievery.player.PlayerData;
 
 public class Database {
 

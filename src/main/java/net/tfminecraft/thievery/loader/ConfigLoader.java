@@ -11,8 +11,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.cache.Parameters;
-import net.tfminecraft.thievery.util.DexterityLerp;
-import net.tfminecraft.thievery.util.ThieveryTexts;
+import net.tfminecraft.thievery.player.RiskCalculator;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public class ConfigLoader {
     public void loadConfig(File configFile) {
@@ -101,9 +101,9 @@ public class ConfigLoader {
         Parameters.chestBreakChanceRampPerSlot = config.getDouble("lockpicking.chest.break-chance-ramp-per-slot", 0.1);
         Parameters.maxSuccessChance = config.getDouble("lockpicking.max-success-chance", 0.95);
         if (config.isConfigurationSection("lockpicking.dex-map")) {
-            DexterityLerp.load(config.getConfigurationSection("lockpicking.dex-map").getValues(false));
+            RiskCalculator.loadDexterityLerp(config.getConfigurationSection("lockpicking.dex-map").getValues(false));
         } else {
-            DexterityLerp.load(null);
+            RiskCalculator.loadDexterityLerp(null);
         }
         Cache.requireOwnerOnline = config.getBoolean("lockpicking.require-owner-online", false);
         Cache.debugAllowOwnChest = config.getBoolean("lockpicking.debug-allow-own-chest", false);

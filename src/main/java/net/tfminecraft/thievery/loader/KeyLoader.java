@@ -9,7 +9,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 
 import me.Plugins.TLibs.TLibs;
-import net.tfminecraft.thievery.data.KeyDefinition;
+import net.tfminecraft.thievery.key.KeyDefinition;
 
 public class KeyLoader {
 

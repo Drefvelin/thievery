@@ -1,15 +1,15 @@
 package net.tfminecraft.thievery.command;
 
 import net.tfminecraft.thievery.Thievery;
-import net.tfminecraft.thievery.manager.ClearCluesManager;
-import net.tfminecraft.thievery.manager.ContainerManager;
-import net.tfminecraft.thievery.manager.CooldownResetService;
-import net.tfminecraft.thievery.manager.InventoryManager;
-import net.tfminecraft.thievery.manager.RiskSetService;
-import net.tfminecraft.thievery.util.ItemValueInspector;
-import net.tfminecraft.thievery.util.KeychainHandler;
-import net.tfminecraft.thievery.util.ThieveryTexts;
-import net.tfminecraft.thievery.util.TraitChecker;
+import net.tfminecraft.thievery.clue.ClearCluesManager;
+import net.tfminecraft.thievery.door.ContainerManager;
+import net.tfminecraft.thievery.player.CooldownResetService;
+import net.tfminecraft.thievery.player.InventoryManager;
+import net.tfminecraft.thievery.player.RiskSetService;
+import net.tfminecraft.thievery.category.ItemValue;
+import net.tfminecraft.thievery.key.KeychainHandler;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
+import net.tfminecraft.thievery.player.TraitChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -60,7 +60,7 @@ public class CommandManager implements CommandExecutor, TabCompleter {
                 return true;
             }
             ItemStack item = player.getInventory().getItemInMainHand();
-            for (String line : ItemValueInspector.buildReport(item)) {
+            for (String line : ItemValue.buildReport(item)) {
                 player.sendMessage(line);
             }
             return true;

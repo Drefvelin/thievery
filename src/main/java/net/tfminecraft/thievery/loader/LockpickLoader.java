@@ -9,7 +9,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 
 import me.Plugins.TLibs.TLibs;
-import net.tfminecraft.thievery.data.LockpickDefinition;
+import net.tfminecraft.thievery.player.LockpickDefinition;
 
 public class LockpickLoader {
 

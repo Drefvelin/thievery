@@ -12,8 +12,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 
 import me.Plugins.TLibs.TLibs;
-import net.tfminecraft.thievery.data.MaskChannelOverride;
-import net.tfminecraft.thievery.data.MaskDefinition;
+import net.tfminecraft.thievery.mask.MaskChannelOverride;
+import net.tfminecraft.thievery.mask.MaskDefinition;
 
 public final class MaskLoader {
 
