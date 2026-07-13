@@ -2,7 +2,9 @@ package net.tfminecraft.thievery.utils;
 
 import org.bukkit.inventory.ItemStack;
 
+import net.tfminecraft.thievery.key.KeyCopyHandler;
 import net.tfminecraft.thievery.key.KeyDefinition;
+import net.tfminecraft.thievery.key.KeychainHandler;
 import net.tfminecraft.thievery.player.LockpickDefinition;
 import net.tfminecraft.thievery.loader.DoorLoader;
 import net.tfminecraft.thievery.loader.KeyLoader;

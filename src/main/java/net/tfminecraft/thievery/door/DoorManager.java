@@ -120,8 +120,8 @@ public class DoorManager implements Listener {
                 if (isSameDoor(lockPickManager.getSessionDoor(uuid), canonical)) {
                     handleSelectResult(player, lockPickManager.handleSelect(player), canonical);
                 } else {
-                    // Different door — cancel old session and start fresh
-                    lockPickManager.cancelSession(uuid);
+                    // Different door — cancel old session (penalize old door) and start fresh
+                    lockPickManager.cancelSession(uuid, true);
                     startLockpicking(player, canonical, data);
                 }
             } else {
@@ -273,6 +273,12 @@ public class DoorManager implements Listener {
             ClueChecker.sendInsufficientCluesMessage(player);
             return;
         }
+        if (lockPickManager.isOnCooldown(player.getUniqueId(), canonical)) {
+            long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId(), canonical);
+            player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR
+                    + "You must wait " + seconds + "s before lockpicking this door again."));
+            return;
+        }
         GuildChecker.LockpickAccessResult access = GuildChecker.checkLockpickAccess(data.getOwnerUUID());
         if (access.type == GuildChecker.LockpickAccessResult.Type.DENY) {
             player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + access.message));
@@ -281,7 +287,7 @@ public class DoorManager implements Listener {
         if (access.type == GuildChecker.LockpickAccessResult.Type.WARN) {
             player.sendMessage(ThieveryTexts.msg(ThieveryTexts.WARN + access.message));
         }
-        double debuffFactor = lockPickManager.getDebuffFactor(player.getUniqueId());
+        double debuffFactor = lockPickManager.getDebuffFactor(player.getUniqueId(), canonical);
         if (debuffFactor > 0) {
             int penalty = (int) Math.round(debuffFactor * 100);
             long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId());

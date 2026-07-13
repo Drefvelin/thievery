@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.loader.CategoryLoader;
 
 public class LoadoutSession {

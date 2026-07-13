@@ -3,6 +3,8 @@ package net.tfminecraft.thievery.steal.source;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import net.tfminecraft.thievery.steal.PlayerSlotMap;
+
 public final class PlayerStealSource implements StealSource {
 
     private final Player victim;

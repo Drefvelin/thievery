@@ -82,7 +82,7 @@
             <artifactId>RPCharacters</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/TFMC/RPCharacters/rpcharacters-1.1.4.jar</systemPath>
+            <systemPath>D:/Dokumenter/My Plugins/TFMC/RPCharacters/rpcharacters-1.1.5.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>

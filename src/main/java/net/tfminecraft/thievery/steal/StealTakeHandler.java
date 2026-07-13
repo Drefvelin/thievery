@@ -9,8 +9,12 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import net.tfminecraft.thievery.Thievery;
+import net.tfminecraft.thievery.category.CategoryHandler;
+import net.tfminecraft.thievery.category.ItemValue;
+import net.tfminecraft.thievery.clue.ClueChecker;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.steal.source.StealSource;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class StealTakeHandler {
 

@@ -3,6 +3,8 @@ package net.tfminecraft.thievery.steal;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import net.tfminecraft.thievery.category.CategoryHandler;
+import net.tfminecraft.thievery.category.ItemValue;
 import net.tfminecraft.thievery.player.PlayerData;
 
 public final class StealTakePreview {

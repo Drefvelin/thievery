@@ -24,8 +24,6 @@ import net.tfminecraft.thievery.player.InventoryManager;
 import net.tfminecraft.thievery.key.KeyCopyListener;
 import net.tfminecraft.thievery.key.KeychainListener;
 import net.tfminecraft.thievery.door.LockPickManager;
-import net.tfminecraft.thievery.mask.MaskChatListener;
-import net.tfminecraft.thievery.mask.MaskProfileBlockListener;
 import net.tfminecraft.thievery.player.PickpocketManager;
 import net.tfminecraft.thievery.player.PlayerManager;
 import net.tfminecraft.thievery.player.RiskSetService;
@@ -83,8 +81,6 @@ public class Thievery extends JavaPlugin {
         getServer().getPluginManager().registerEvents(pickpocketManager, this);
         getServer().getPluginManager().registerEvents(playerManager, this);
         getServer().getPluginManager().registerEvents(inventoryManager, this);
-        getServer().getPluginManager().registerEvents(new MaskChatListener(), this);
-        getServer().getPluginManager().registerEvents(new MaskProfileBlockListener(), this);
         getServer().getPluginManager().registerEvents(new KeychainListener(), this);
         getServer().getPluginManager().registerEvents(new KeyCopyListener(), this);
 

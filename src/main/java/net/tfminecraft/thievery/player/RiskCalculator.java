@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 import net.Indyuce.mmocore.api.player.PlayerData;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.cache.Parameters;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class RiskCalculator {
 

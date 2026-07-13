@@ -8,8 +8,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.category.CategoryHandler;
+import net.tfminecraft.thievery.category.ItemValue;
 import net.tfminecraft.thievery.player.PlayerData;
+import net.tfminecraft.thievery.player.RiskCalculator;
 import net.tfminecraft.thievery.utils.Keys;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class StealItemDisplay {
 

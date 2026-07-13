@@ -153,7 +153,7 @@ public class ChestStealReference extends HiddenStealReference {
                 Thievery.getCoreProtect().logContainerTransaction(taker.getName() + "_lockpick",
                         chestBlock.getLocation());
             }
-            ClueDropper.tryDropChestClue(taker, session, chestBlock, chestInv, chestSlot,
+            ClueDropper.tryDropChestClue(taker, session, chestBlock,
                     dexterity, lockpickStrength, valueTaken, fromBundle);
         };
     }

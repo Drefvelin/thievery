@@ -1,4 +1,4 @@
-﻿package net.tfminecraft.thievery.category;
+package net.tfminecraft.thievery.category;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -706,7 +706,7 @@ public final class ItemValue {
         lines.add(ThieveryTexts.format(DIVIDER));
         lines.add(totalLine("Per item", perItem, true));
         if (item.getAmount() > 1) {
-            lines.add(totalLine("Stack total (Ã—" + item.getAmount() + ")", perItem * item.getAmount(), true));
+            lines.add(totalLine("Stack total (×" + item.getAmount() + ")", perItem * item.getAmount(), true));
         }
         lines.add(ThieveryTexts.format(HEADER));
         return lines;
@@ -731,9 +731,9 @@ public final class ItemValue {
             }
             double innerValue = CategoryHandler.getPerItemValue(inner) * inner.getAmount();
             innerTotal += innerValue;
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ " + ThieveryTexts.WHITE
-                    + StringFormatter.getName(inner) + ThieveryTexts.MUTED + " Ã—" + inner.getAmount()
-                    + ThieveryTexts.MUTED + "  â†’  " + ThieveryTexts.ACCENT
+            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
+                    + StringFormatter.getName(inner) + ThieveryTexts.MUTED + " ×" + inner.getAmount()
+                    + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(innerValue)));
         }
         double shell = CategoryHandler.getPerItemValue(bundle);
@@ -779,7 +779,7 @@ public final class ItemValue {
 
         if (category == null && crafted == null) {
             lines.add(sectionTitle("Category base", Cache.defaultItemValue));
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  No category match â€” using default_item_value"));
+            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  No category match — using default_item_value"));
             return Cache.defaultItemValue;
         }
 
@@ -862,15 +862,15 @@ public final class ItemValue {
         if (recipe != null) {
             Ingredient base = ThieveryBridge.getIngredientById(recipe.getBaseId());
             if (base != null) {
-                lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ Base " + ThieveryTexts.WHITE
-                        + recipe.getBaseId() + ThieveryTexts.MUTED + "  â†’  " + ThieveryTexts.ACCENT
+                lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Base " + ThieveryTexts.WHITE
+                        + recipe.getBaseId() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                         + StealItemDisplay.formatValue(base.getIngredientData().getValue())));
             }
             for (String catalystId : recipe.getCatalystIds()) {
                 Ingredient catalyst = ThieveryBridge.getIngredientById(catalystId);
                 if (catalyst != null) {
-                    lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ Catalyst " + ThieveryTexts.WHITE
-                            + catalystId + ThieveryTexts.MUTED + "  â†’  " + ThieveryTexts.ACCENT
+                    lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Catalyst " + ThieveryTexts.WHITE
+                            + catalystId + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                             + StealItemDisplay.formatValue(catalyst.getIngredientData().getValue())));
                 }
             }
@@ -898,8 +898,8 @@ public final class ItemValue {
                 if (ing != null) {
                     double part = ing.getIngredientData().getValue() * input.getAmount();
                     materials += part;
-                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ " + ThieveryTexts.WHITE
-                            + input.getId() + " Ã—" + input.getAmount() + ThieveryTexts.MUTED + "  â†’  "
+                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
+                            + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
                             + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(part)));
                 }
             } else if (kind.equals("alloy")) {
@@ -911,8 +911,8 @@ public final class ItemValue {
                     }
                     double part = perAlloy * input.getAmount();
                     materials += part;
-                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ Alloy " + ThieveryTexts.WHITE
-                            + input.getId() + " Ã—" + input.getAmount() + ThieveryTexts.MUTED + "  â†’  "
+                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Alloy " + ThieveryTexts.WHITE
+                            + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
                             + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(part)));
                 }
             }
@@ -923,7 +923,7 @@ public final class ItemValue {
         if (quality != null) {
             qualityBonus = quality.getValue();
             details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Quality: " + ThieveryTexts.WHITE
-                    + quality.getName() + ThieveryTexts.MUTED + "  â†’  " + ThieveryTexts.ACCENT
+                    + quality.getName() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(qualityBonus)));
         }
 
@@ -933,7 +933,7 @@ public final class ItemValue {
             tierBonus = ItemValue.tierBonus(majorityTier);
             if (majorityTier > 0) {
                 details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Majority tier " + ThieveryTexts.WHITE
-                        + toRoman(majorityTier) + ThieveryTexts.MUTED + " bonus  â†’  " + ThieveryTexts.ACCENT
+                        + toRoman(majorityTier) + ThieveryTexts.MUTED + " bonus  →  " + ThieveryTexts.ACCENT
                         + StealItemDisplay.formatValue(tierBonus)));
             }
         }
@@ -972,8 +972,8 @@ public final class ItemValue {
                     ? ThieveryTexts.MUTED + " [" + ThieveryTexts.INFO + gemCategory.getId() + ThieveryTexts.MUTED + "]"
                     : ThieveryTexts.MUTED + " [default]";
 
-            details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  â€¢ " + ThieveryTexts.WHITE + gemName
-                    + categoryNote + ThieveryTexts.MUTED + "  â†’  " + ThieveryTexts.ACCENT
+            details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE + gemName
+                    + categoryNote + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(gemValue)));
             details.add(ThieveryTexts.format(ThieveryTexts.DARK + "    " + path));
         }

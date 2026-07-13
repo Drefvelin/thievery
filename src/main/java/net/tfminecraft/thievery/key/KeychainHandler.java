@@ -19,6 +19,8 @@ import me.Plugins.TLibs.TLibs;
 import net.tfminecraft.thievery.key.KeyDefinition;
 import net.tfminecraft.thievery.loader.KeychainLoader;
 import net.tfminecraft.thievery.utils.Keys;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
+import net.tfminecraft.thievery.utils.ToolResolver;
 
 public final class KeychainHandler {
 

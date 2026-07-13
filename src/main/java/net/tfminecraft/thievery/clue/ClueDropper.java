@@ -5,8 +5,6 @@ import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 
 import net.tfminecraft.RPCharacters.Managers.PlayerManager;
 import net.tfminecraft.RPCharacters.Objects.RPCharacter;
@@ -14,29 +12,27 @@ import net.tfminecraft.RPCharacters.Utils.ClueGiver;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.door.ChestLockpickSession;
-import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.database.Database;
+import net.tfminecraft.thievery.player.PlayerData;
+import net.tfminecraft.thievery.player.RiskCalculator;
+import net.tfminecraft.thievery.player.TargetKeyResolver;
 
 public final class ClueDropper {
 
     private ClueDropper() {}
 
     public static void tryDropChestClue(Player player, ChestLockpickSession session, Block chestBlock,
-            Inventory chestInv, int takenChestSlot, int dexterity, double lockpickStrength, double valueTaken) {
-        tryDropChestClue(player, session, chestBlock, chestInv, takenChestSlot, dexterity, lockpickStrength,
-                valueTaken, false);
+            int dexterity, double lockpickStrength, double valueTaken) {
+        tryDropChestClue(player, session, chestBlock, dexterity, lockpickStrength, valueTaken, false);
     }
 
     public static void tryDropChestClue(Player player, ChestLockpickSession session, Block chestBlock,
-            Inventory chestInv, int takenChestSlot, int dexterity, double lockpickStrength,
-            boolean fromBundleTake) {
-        tryDropChestClue(player, session, chestBlock, chestInv, takenChestSlot, dexterity, lockpickStrength,
-                0, fromBundleTake);
+            int dexterity, double lockpickStrength, boolean fromBundleTake) {
+        tryDropChestClue(player, session, chestBlock, dexterity, lockpickStrength, 0, fromBundleTake);
     }
 
     public static void tryDropChestClue(Player player, ChestLockpickSession session, Block chestBlock,
-            Inventory chestInv, int takenChestSlot, int dexterity, double lockpickStrength, double valueTaken,
-            boolean fromBundleTake) {
+            int dexterity, double lockpickStrength, double valueTaken, boolean fromBundleTake) {
         PlayerData playerData = Thievery.getPlayerManager().get(player.getUniqueId());
         playerData.applyRiskDecay(dexterity);
         double sessionRisk = playerData.getRisk();
@@ -49,19 +45,8 @@ public final class ClueDropper {
         String clueText = pickClue(player, playerData, targetKey, dexterity, lockpickStrength, sessionRisk);
         if (clueText == null) return;
 
-        ItemStack cluePaper = ClueGiver.createClueItem(clueText);
-        if (cluePaper == null || cluePaper.getType().isAir()) return;
-
-        int preferredSlot = fromBundleTake ? -1 : takenChestSlot;
-        boolean chestPlaced = placeClueInChest(chestInv, preferredSlot, cluePaper);
-
-        boolean spawnHologram = session.getSuccessfulClueDrops() == 0 || !chestPlaced;
-        boolean hologramSpawned = false;
-        if (spawnHologram) {
-            hologramSpawned = trySpawnHologram(player, player.getLocation(), chestBlock.getLocation(), clueText);
-        }
-
-        if (!chestPlaced && !hologramSpawned) return;
+        boolean hologramSpawned = trySpawnHologram(player, player.getLocation(), chestBlock.getLocation(), clueText);
+        if (!hologramSpawned) return;
 
         recordSuccess(player, playerData, clueText, targetKey, session);
     }
@@ -107,38 +92,6 @@ public final class ClueDropper {
         }
 
         return ClueGiver.getRandomClueExcluding(character, playerData.getRecentCluesForExclude(targetKey));
-    }
-
-    private static boolean placeClueInChest(Inventory inv, int preferredSlot, ItemStack cluePaper) {
-        if (preferredSlot >= 0 && canPlaceClueInSlot(inv, preferredSlot)) {
-            inv.setItem(preferredSlot, cluePaper.clone());
-            return true;
-        }
-        for (int i = 0; i < inv.getSize(); i++) {
-            if (i == preferredSlot) {
-                continue;
-            }
-            if (!canPlaceClueInSlot(inv, i)) {
-                continue;
-            }
-            inv.setItem(i, cluePaper.clone());
-            return true;
-        }
-        return false;
-    }
-
-    private static boolean canPlaceClueInSlot(Inventory inv, int slot) {
-        if (!isEmptySlot(inv, slot)) {
-            return false;
-        }
-        ItemStack existing = inv.getItem(slot);
-        return !ItemValue.isBundle(existing);
-    }
-
-    private static boolean isEmptySlot(Inventory inv, int slot) {
-        if (slot < 0 || slot >= inv.getSize()) return false;
-        ItemStack item = inv.getItem(slot);
-        return item == null || item.getType().isAir();
     }
 
     private static boolean trySpawnHologram(Player player, Location anchor, Location targetBlock, String clueText) {

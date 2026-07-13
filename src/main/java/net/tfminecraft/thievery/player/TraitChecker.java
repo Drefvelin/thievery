@@ -8,6 +8,7 @@ import net.tfminecraft.RPCharacters.Objects.Trait.Trait;
 import java.util.List;
 
 import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class TraitChecker {
 

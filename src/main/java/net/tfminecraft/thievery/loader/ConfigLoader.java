@@ -26,7 +26,6 @@ public class ConfigLoader {
 
         KeyLoader.load(config);
         LockpickLoader.load(config);
-        MaskLoader.load(config);
         KeychainLoader.load(config);
         KeyCopyLoader.load(config);
         RobberyLoader.load(config);

@@ -59,46 +59,6 @@ tier-values:
   3: 4.0
   4: 8.0
 
-masks:
-  ghost_mask:
-    item: m.masks.ghost_mask
-
-masked-channels:
-  rp:
-    commands: [rp]
-    format: '&fMasked&e: &f"&e{message}&f"'
-    range: 15
-
-  shout:
-    commands: [shout]
-    format: '&fMasked&6 shouts: &f"&6{message}&f"'
-    range: 24
-
-  yell:
-    commands: [yell, y]
-    format: '&fMasked&c yells: &f"&c&l{message}&f"'
-    range: 48
-
-  whisper:
-    commands: [whisper, wh]
-    format: '&fMasked#55aaff whispers: &f&o"#55aaff&o{message}&f&o"'
-    range: 2
-
-  looc:
-    commands: [looc]
-    format: '&f[&2LOOC&f] &fMasked: &7{message}'
-    range: 20
-
-  action:
-    commands: [me]
-    format: '&e* &fMasked &d{message}'
-    range: 20
-
-  # ooc:
-  #   commands: [ooc]
-  #   format: '&f[&9OOC&f] &fMasked: &7{message}'
-  #   range:
-
 clues:
   recent-max: 6
   recent-cooldown-hours: 1

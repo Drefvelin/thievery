@@ -11,8 +11,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import net.tfminecraft.thievery.cache.Cache;
+import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.loader.CategoryLoader;
-import net.tfminecraft.thievery.player.RiskCalculator;
 
 public class PlayerData {
 

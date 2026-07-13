@@ -7,6 +7,7 @@ import org.bukkit.inventory.ItemStack;
 import net.tfminecraft.RPCharacters.Managers.PlayerManager;
 import net.tfminecraft.RPCharacters.Objects.RPCharacter;
 import net.tfminecraft.RPCharacters.Utils.ClueGiver;
+import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class ClueChecker {
 
