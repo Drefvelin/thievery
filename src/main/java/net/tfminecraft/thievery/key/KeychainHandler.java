@@ -216,10 +216,10 @@ public final class KeychainHandler {
                 lore.add(existing.get(i));
             }
         }
-        lore.add(ThieveryTexts.format(ThieveryTexts.WHITE + "Keys " + ThieveryTexts.WARN + stored.size()
+        lore.add(ThieveryTexts.gui(ThieveryTexts.WHITE + "Keys " + ThieveryTexts.GUI_WARN + stored.size()
                 + "/" + KeychainLoader.getMaxKeys()));
         for (ItemStack key : stored) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.WHITE + formatKeyName(key)));
+            lore.add(ThieveryTexts.gui(ThieveryTexts.WHITE + formatKeyName(key)));
         }
         meta.setLore(lore);
         meta.setCustomModelData(KeychainLoader.resolveModelData(stored.size()));

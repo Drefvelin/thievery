@@ -61,7 +61,7 @@ public class GuildChecker {
             long remainingMs = LockpickTargetCache.getRemainingMs(targetKey);
             long minutes = remainingMs / 60000;
             long seconds = (remainingMs % 60000) / 1000;
-            String msg = subjectName + " has no members online — " + minutes + "m " + seconds + "s remaining on lockpick window.";
+            String msg = subjectName + " has no members online - " + minutes + "m " + seconds + "s remaining on lockpick window.";
             return new LockpickAccessResult(LockpickAccessResult.Type.WARN, msg);
         }
 

@@ -153,10 +153,10 @@ public final class RiskCalculator {
     public static List<String> formatRiskLore(double risk, double critical) {
         List<String> lore = new ArrayList<>();
         if (risk > 0) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.ERROR + "Risk: " + formatPercent(risk)));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Risk: " + ThieveryTexts.MUTED + formatPercent(risk)));
         }
         if (critical > 0) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.CRITICAL + "Critical: " + formatPercent(critical)));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.CRITICAL + "Critical: " + ThieveryTexts.MUTED + formatPercent(critical)));
         }
         return lore;
     }
@@ -164,15 +164,15 @@ public final class RiskCalculator {
     public static String formatRiskTitle(double risk, double critical) {
         StringBuilder title = new StringBuilder();
         if (risk > 0) {
-            title.append(ThieveryTexts.ERROR).append("Risk: ").append(formatPercentWhole(risk));
+            title.append(ThieveryTexts.MUTED).append("Risk: ").append(ThieveryTexts.MUTED).append(formatPercentWhole(risk));
         }
         if (critical > 0) {
             if (title.length() > 0) {
                 title.append(" ");
             }
-            title.append(ThieveryTexts.CRITICAL).append("Crit: ").append(formatPercentWhole(critical));
+            title.append(ThieveryTexts.CRITICAL).append("Crit: ").append(ThieveryTexts.MUTED).append(formatPercentWhole(critical));
         }
-        return title.length() > 0 ? ThieveryTexts.format(title.toString()) : "";
+        return title.length() > 0 ? ThieveryTexts.formatDisplay(title.toString()) : "";
     }
 
     private static double clamp01(double value) {

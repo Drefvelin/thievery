@@ -26,7 +26,6 @@ import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.Ingredient;
 import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.category.AcCraftRef;
-import net.tfminecraft.thievery.category.CategoryMatchType;
 import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.loader.CategoryLoader;
@@ -73,14 +72,7 @@ public final class ItemValue {
     }
 
     private static double categoryBase(ItemStack item) {
-        ItemCategory category = CategoryHandler.resolveFirstMatch(item);
-        if (category == null) {
-            return Cache.defaultItemValue;
-        }
-        return switch (category.getMatch().getType()) {
-            case PATH -> category.getPathWeightFor(item);
-            default -> category.getValue();
-        };
+        return CategoryHandler.resolveItemWeight(item);
     }
 
     private static double acAddon(ItemStack item) {
@@ -311,7 +303,7 @@ public final class ItemValue {
             if (!CategoryHandler.canRevealItem(thiefData, inner)) {
                 continue;
             }
-            lore.add(ThieveryTexts.format(ThieveryTexts.WHITE + "- " + StringFormatter.getName(inner)
+            lore.add(ThieveryTexts.formatDisplay(ThieveryTexts.WHITE + "- " + StringFormatter.getName(inner)
                     + " " + ThieveryTexts.MUTED + "x" + inner.getAmount()));
         }
         return lore;
@@ -664,34 +656,34 @@ public final class ItemValue {
 
     public static List<String> buildReport(ItemStack item) {
         List<String> lines = new ArrayList<>();
-        lines.add(ThieveryTexts.format(HEADER));
-        lines.add(ThieveryTexts.format("#c9a24f§lItem Value Inspector"));
-        lines.add(ThieveryTexts.format(HEADER));
+        lines.add(ThieveryTexts.formatDisplay(HEADER));
+        lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.ACCENT + "§lItem Value Inspector"));
+        lines.add(ThieveryTexts.formatDisplay(HEADER));
 
         if (item == null || item.getType().isAir()) {
-            lines.add(ThieveryTexts.format(ThieveryTexts.ERROR + "No item in hand."));
-            lines.add(ThieveryTexts.format(HEADER));
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.ERROR + "No item in hand."));
+            lines.add(ThieveryTexts.formatDisplay(HEADER));
             return lines;
         }
 
         if (ClueChecker.isClueItem(item)) {
             lines.add(line("Item", StringFormatter.getName(item)));
             lines.add(line("Path", pathOf(item)));
-            lines.add(ThieveryTexts.format(DIVIDER));
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Clue items are never stealable."));
+            lines.add(ThieveryTexts.formatDisplay(DIVIDER));
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "Clue items are never stealable."));
             lines.add(valueLine("Total", 0));
-            lines.add(ThieveryTexts.format(HEADER));
+            lines.add(ThieveryTexts.formatDisplay(HEADER));
             return lines;
         }
 
         if (ItemValue.isBundle(item)) {
             appendBundleReport(lines, item);
-            lines.add(ThieveryTexts.format(HEADER));
+            lines.add(ThieveryTexts.formatDisplay(HEADER));
             return lines;
         }
 
         appendItemHeader(lines, item);
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
 
         double categoryBase = appendCategorySection(lines, item);
         double acAddon = appendAcSection(lines, item);
@@ -703,23 +695,23 @@ public final class ItemValue {
             perItem = computed;
         }
 
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(totalLine("Per item", perItem, true));
         if (item.getAmount() > 1) {
             lines.add(totalLine("Stack total (×" + item.getAmount() + ")", perItem * item.getAmount(), true));
         }
-        lines.add(ThieveryTexts.format(HEADER));
+        lines.add(ThieveryTexts.formatDisplay(HEADER));
         return lines;
     }
 
     private static void appendBundleReport(List<String> lines, ItemStack bundle) {
         appendItemHeader(lines, bundle);
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(sectionTitle("Bundle", CategoryHandler.getPerItemValue(bundle)));
 
         BundleMeta meta = (BundleMeta) bundle.getItemMeta();
         if (meta == null || !meta.hasItems()) {
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Empty bundle shell only."));
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Empty bundle shell only."));
             lines.add(totalLine("Total", CategoryHandler.getTotalValue(bundle), true));
             return;
         }
@@ -731,13 +723,13 @@ public final class ItemValue {
             }
             double innerValue = CategoryHandler.getPerItemValue(inner) * inner.getAmount();
             innerTotal += innerValue;
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
                     + StringFormatter.getName(inner) + ThieveryTexts.MUTED + " ×" + inner.getAmount()
                     + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(innerValue)));
         }
         double shell = CategoryHandler.getPerItemValue(bundle);
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(valueLine("Bundle shell", shell));
         lines.add(valueLine("Contents", innerTotal));
         lines.add(totalLine("Total", shell + innerTotal, true));
@@ -760,51 +752,37 @@ public final class ItemValue {
                 matches.add(category.getId());
             }
         }
-        AcCraftRef crafted = CategoryHandler.resolveCraftedMatch(item);
-        if (crafted != null) {
-            matches.add(crafted.getRawId());
-        }
         if (matches.isEmpty()) {
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Categories: "
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "Categories: "
                     + ThieveryTexts.WHITE + "none (uncategorized)"));
         } else {
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Categories: "
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "Categories: "
                     + ThieveryTexts.INFO + String.join(ThieveryTexts.MUTED + ", " + ThieveryTexts.INFO, matches)));
         }
     }
 
     private static double appendCategorySection(List<String> lines, ItemStack item) {
-        ItemCategory category = CategoryHandler.resolveFirstMatch(item);
+        ItemCategory category = CategoryHandler.resolveCategory(item);
         AcCraftRef crafted = CategoryHandler.resolveCraftedMatch(item);
+        double base = CategoryHandler.resolveItemWeight(item);
 
         if (category == null && crafted == null) {
             lines.add(sectionTitle("Category base", Cache.defaultItemValue));
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  No category match — using default_item_value"));
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  No category match - using default_item_value"));
             return Cache.defaultItemValue;
         }
-
-        if (category == null) {
-            lines.add(sectionTitle("Category base", Cache.defaultItemValue));
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Craft: " + ThieveryTexts.INFO
-                    + crafted.getRawId() + ThieveryTexts.MUTED + " ("
-                    + crafted.getStatTemplate() + " tier " + crafted.getTier() + ")"));
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Value comes from composition below"));
-            return Cache.defaultItemValue;
-        }
-
-        double base = switch (category.getMatch().getType()) {
-            case PATH -> category.getPathWeightFor(item);
-            default -> category.getValue();
-        };
 
         lines.add(sectionTitle("Category base", base));
-        lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Category: " + ThieveryTexts.INFO + category.getId()
-                + ThieveryTexts.MUTED + " (" + matchTypeLabel(category) + ")"));
-
-        if (category.getMatch().getType() == CategoryMatchType.PATH) {
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Path-listed item weight"));
-        } else if (base == 0) {
-            lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Value comes from composition below"));
+        if (category != null) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Category: " + ThieveryTexts.INFO + category.getId()));
+        }
+        if (crafted != null) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Craft: " + ThieveryTexts.INFO
+                    + crafted.getRawId() + ThieveryTexts.MUTED + " ("
+                    + crafted.getStatTemplate() + " tier " + crafted.getTier() + ")"));
+        }
+        if (base == 0) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Value comes from composition below"));
         }
         return base;
     }
@@ -833,14 +811,14 @@ public final class ItemValue {
     }
 
     private static double appendIngredientAc(List<String> lines, Ingredient ingredient) {
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         int matValue = ingredient.getIngredientData().getValue();
         int tier = ingredient.getIngredientData().hasTier() ? ingredient.getIngredientData().getTier() : 0;
         double tierBonus = ItemValue.tierBonus(tier);
         double total = matValue + tierBonus;
 
         lines.add(sectionTitle("Material", total));
-        lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Ingredient: " + ThieveryTexts.WHITE + ingredient.getId()
+        lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Ingredient: " + ThieveryTexts.WHITE + ingredient.getId()
                 + ThieveryTexts.MUTED + " (" + ingredient.getIngredientData().getType().getId() + ")"));
         lines.add(valueLine("  Material value", matValue));
         if (tier > 0) {
@@ -850,7 +828,7 @@ public final class ItemValue {
     }
 
     private static double appendAlloyAc(List<String> lines, Alloy alloy) {
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         AlloyRecipe recipe = alloy.getData() != null ? alloy.getData().getRecipe() : null;
         int forgeSum = ThieveryBridge.sumForgeInputValues(recipe);
         int tier = alloy.getData() != null ? alloy.getData().getTier() : 0;
@@ -858,18 +836,18 @@ public final class ItemValue {
         double total = forgeSum + tierBonus;
 
         lines.add(sectionTitle("Alloy", total));
-        lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Alloy: " + ThieveryTexts.WHITE + alloy.getId()));
+        lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Alloy: " + ThieveryTexts.WHITE + alloy.getId()));
         if (recipe != null) {
             Ingredient base = ThieveryBridge.getIngredientById(recipe.getBaseId());
             if (base != null) {
-                lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Base " + ThieveryTexts.WHITE
+                lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Base " + ThieveryTexts.WHITE
                         + recipe.getBaseId() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                         + StealItemDisplay.formatValue(base.getIngredientData().getValue())));
             }
             for (String catalystId : recipe.getCatalystIds()) {
                 Ingredient catalyst = ThieveryBridge.getIngredientById(catalystId);
                 if (catalyst != null) {
-                    lines.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Catalyst " + ThieveryTexts.WHITE
+                    lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Catalyst " + ThieveryTexts.WHITE
                             + catalystId + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                             + StealItemDisplay.formatValue(catalyst.getIngredientData().getValue())));
                 }
@@ -887,7 +865,7 @@ public final class ItemValue {
 
         CraftingRecipe recipe = ThieveryBridge.getRecipeById(provenance.getRecipeId());
         if (recipe != null) {
-            details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Recipe: " + ThieveryTexts.WHITE
+            details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Recipe: " + ThieveryTexts.WHITE
                     + provenance.getRecipeId() + ThieveryTexts.MUTED + " (" + recipe.getCategoryId() + ")"));
         }
 
@@ -898,7 +876,7 @@ public final class ItemValue {
                 if (ing != null) {
                     double part = ing.getIngredientData().getValue() * input.getAmount();
                     materials += part;
-                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
+                    details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
                             + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
                             + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(part)));
                 }
@@ -911,7 +889,7 @@ public final class ItemValue {
                     }
                     double part = perAlloy * input.getAmount();
                     materials += part;
-                    details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • Alloy " + ThieveryTexts.WHITE
+                    details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Alloy " + ThieveryTexts.WHITE
                             + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
                             + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(part)));
                 }
@@ -922,7 +900,7 @@ public final class ItemValue {
         Quality quality = ThieveryBridge.getQualityById(provenance.getQualityId());
         if (quality != null) {
             qualityBonus = quality.getValue();
-            details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Quality: " + ThieveryTexts.WHITE
+            details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Quality: " + ThieveryTexts.WHITE
                     + quality.getName() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(qualityBonus)));
         }
@@ -932,14 +910,14 @@ public final class ItemValue {
             int majorityTier = ThieveryBridge.resolveMajorityTier(recipe, provenance.getInputs());
             tierBonus = ItemValue.tierBonus(majorityTier);
             if (majorityTier > 0) {
-                details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  Majority tier " + ThieveryTexts.WHITE
+                details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Majority tier " + ThieveryTexts.WHITE
                         + toRoman(majorityTier) + ThieveryTexts.MUTED + " bonus  →  " + ThieveryTexts.ACCENT
                         + StealItemDisplay.formatValue(tierBonus)));
             }
         }
 
         double total = materials + qualityBonus + tierBonus;
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(sectionTitle("Crafted", total));
         lines.addAll(details);
         return total;
@@ -972,13 +950,13 @@ public final class ItemValue {
                     ? ThieveryTexts.MUTED + " [" + ThieveryTexts.INFO + gemCategory.getId() + ThieveryTexts.MUTED + "]"
                     : ThieveryTexts.MUTED + " [default]";
 
-            details.add(ThieveryTexts.format(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE + gemName
+            details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE + gemName
                     + categoryNote + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
                     + StealItemDisplay.formatValue(gemValue)));
-            details.add(ThieveryTexts.format(ThieveryTexts.DARK + "    " + path));
+            details.add(ThieveryTexts.formatDisplay(ThieveryTexts.DARK + "    " + path));
         }
 
-        lines.add(ThieveryTexts.format(DIVIDER));
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(sectionTitle("Socketed gems", total));
         lines.addAll(details);
         return total;
@@ -1018,32 +996,23 @@ public final class ItemValue {
         return "Vanilla / Other";
     }
 
-    private static String matchTypeLabel(ItemCategory category) {
-        return switch (category.getMatch().getType()) {
-            case PATH -> "path list";
-            case AC_MATERIAL -> category.getMatch().getAcType() + " tier "
-                    + category.getMatch().getAcTier();
-            case COMPOSITE -> "composite";
-        };
-    }
-
     private static String line(String label, String value) {
-        return ThieveryTexts.format(ThieveryTexts.MUTED + label + ": " + ThieveryTexts.WHITE + value);
+        return ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + label + ": " + ThieveryTexts.WHITE + value);
     }
 
     private static String sectionTitle(String label, double value) {
-        return ThieveryTexts.format(ThieveryTexts.WARN + label + repeat(' ', Math.max(1, 18 - label.length()))
+        return ThieveryTexts.formatDisplay(ThieveryTexts.WARN + label + repeat(' ', Math.max(1, 18 - label.length()))
                 + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(value));
     }
 
     private static String valueLine(String label, double value) {
-        return ThieveryTexts.format(ThieveryTexts.MUTED + label + ": " + ThieveryTexts.ACCENT
+        return ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + label + ": " + ThieveryTexts.ACCENT
                 + StealItemDisplay.formatValue(value));
     }
 
     private static String totalLine(String label, double value, boolean bold) {
         String weight = bold ? "§l" : "";
-        return ThieveryTexts.format(ThieveryTexts.MUTED + label + ": " + weight + "#e8c170"
+        return ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + label + ": " + weight + ThieveryTexts.ACCENT
                 + StealItemDisplay.formatValue(value));
     }
 

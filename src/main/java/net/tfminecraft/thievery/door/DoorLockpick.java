@@ -59,7 +59,7 @@ public final class DoorLockpick {
 
         @Override
         public void onOutOfRange(Player actor) {
-            actor.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Lockpicking cancelled — you moved too far from the door."));
+            actor.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Lockpicking cancelled - you moved too far from the door."));
         }
 
         public Location getDoorLocation() {

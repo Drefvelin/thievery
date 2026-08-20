@@ -28,9 +28,9 @@ public final class PickpocketLoader {
         budget = config.getDouble("pickpocket.budget", 10);
         cooldownHours = config.getInt("pickpocket.cooldown-hours", 1);
         maxDistance = config.getDouble("pickpocket.max-distance", 4);
-        alertSubtitle = ThieveryTexts.format(config.getString("pickpocket.alert-subtitle",
+        alertSubtitle = ThieveryTexts.formatGui(config.getString("pickpocket.alert-subtitle",
                 "#d65c5cSomeone is pickpocketing you!"));
-        alertSubtitleCritical = ThieveryTexts.format(config.getString("pickpocket.alert-subtitle-critical",
+        alertSubtitleCritical = ThieveryTexts.formatGui(config.getString("pickpocket.alert-subtitle-critical",
                 "#d65c5c{character_name} is pickpocketing you!"));
 
         List<String> ignoreNameContains = config.getStringList("pickpocket.ignore.name-contains");

@@ -290,7 +290,7 @@ public class DoorManager implements Listener {
         double debuffFactor = lockPickManager.getDebuffFactor(player.getUniqueId(), canonical);
         if (debuffFactor > 0) {
             int penalty = (int) Math.round(debuffFactor * 100);
-            long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId());
+            long seconds = lockPickManager.getCooldownRemainingSeconds(player.getUniqueId(), canonical);
             player.sendMessage(ThieveryTexts.msg(ThieveryTexts.WARN + "Lockpicking with " + penalty + "% penalty (" + seconds + "s)"));
         }
         double lockpickStrength = ToolResolver.getLockpickStrength(player.getInventory().getItemInMainHand());

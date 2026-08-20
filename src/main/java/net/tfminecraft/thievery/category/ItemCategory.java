@@ -12,23 +12,22 @@ import org.bukkit.persistence.PersistentDataType;
 import me.Plugins.TLibs.TLibs;
 import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
 import net.tfminecraft.thievery.Thievery;
-import net.tfminecraft.thievery.category.CategoryHandler;
 import net.tfminecraft.thievery.utils.ThieveryTexts;
 import net.tfminecraft.thievery.utils.Keys;
 
 public class ItemCategory {
 
     public static final class CategoryItemEntry {
-        private final String path;
+        private final String slug;
         private final double weight;
 
-        public CategoryItemEntry(String path, double weight) {
-            this.path = path;
+        public CategoryItemEntry(String slug, double weight) {
+            this.slug = slug;
             this.weight = weight;
         }
 
-        public String getPath() {
-            return path;
+        public String getSlug() {
+            return slug;
         }
 
         public double getWeight() {
@@ -41,10 +40,8 @@ public class ItemCategory {
     private final String icon;
     private final int cost;
     private final double value;
-    private final CategoryMatch match;
     private final boolean loadoutVisible;
     private final List<CategoryItemEntry> items = new ArrayList<>();
-    private final List<AcCraftRef> acCraftRefs = new ArrayList<>();
 
     public ItemCategory(String key, ConfigurationSection config) {
         id = key;
@@ -52,58 +49,32 @@ public class ItemCategory {
         icon = config.getString("icon", "v.paper");
         cost = config.getInt("cost", 1);
         value = config.getDouble("value", 1.0);
-        match = parseMatch(config);
         if (config.contains("loadout")) {
             loadoutVisible = config.getBoolean("loadout");
         } else {
             loadoutVisible = true;
         }
+        if (config.contains("match")) {
+            Thievery.getInstance().getLogger().severe("[Thievery] Category '" + key
+                    + "' uses deprecated 'match' — remove it.");
+        }
 
-        if (match.getType() == CategoryMatchType.COMPOSITE) {
-            for (String entry : config.getStringList("items")) {
-                String trimmed = entry.trim();
-                if (trimmed.isEmpty()) {
-                    continue;
-                }
-                AcCraftRef.parse(trimmed).ifPresentOrElse(acCraftRefs::add, () -> Thievery.getInstance()
-                        .getLogger().severe("[Thievery] Composite '" + id
-                                + "' has malformed AC craft ref '" + trimmed + "'"));
+        for (String entry : config.getStringList("items")) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
             }
-        } else if (match.getType() == CategoryMatchType.PATH) {
-            for (String entry : config.getStringList("items")) {
-                String trimmed = entry.trim();
-                if (trimmed.isEmpty()) {
-                    continue;
+            String[] parts = trimmed.split("\\s+");
+            String slug = parts[0];
+            double weight = value;
+            if (parts.length > 1) {
+                try {
+                    weight = Double.parseDouble(parts[1]);
+                } catch (NumberFormatException ignored) {
                 }
-                String[] parts = trimmed.split("\\s+");
-                String path = parts[0];
-                double weight = value;
-                if (parts.length > 1) {
-                    try {
-                        weight = Double.parseDouble(parts[1]);
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                items.add(new CategoryItemEntry(path, weight));
             }
+            items.add(new CategoryItemEntry(slug, weight));
         }
-    }
-
-    private static CategoryMatch parseMatch(ConfigurationSection config) {
-        if (!config.contains("match")) {
-            return CategoryMatch.path();
-        }
-        Object raw = config.get("match");
-        if (raw instanceof String matchValue && matchValue.equalsIgnoreCase("composite")) {
-            return CategoryMatch.composite();
-        }
-        if (!(raw instanceof ConfigurationSection matchSection)) {
-            return CategoryMatch.path();
-        }
-        if (matchSection.contains("ac_type")) {
-            return CategoryMatch.acMaterial(matchSection.getString("ac_type"), matchSection.getInt("ac_tier"));
-        }
-        return CategoryMatch.path();
     }
 
     public String getId() {
@@ -126,24 +97,12 @@ public class ItemCategory {
         return value;
     }
 
-    public CategoryMatch getMatch() {
-        return match;
-    }
-
     public boolean isLoadoutVisible() {
         return loadoutVisible;
     }
 
     public List<CategoryItemEntry> getItems() {
-        return items;
-    }
-
-    public List<AcCraftRef> getAcCraftRefs() {
-        return Collections.unmodifiableList(acCraftRefs);
-    }
-
-    public boolean isPathCategory() {
-        return match.getType() == CategoryMatchType.PATH;
+        return Collections.unmodifiableList(items);
     }
 
     public ItemStack getIconItem(boolean active) {
@@ -162,44 +121,20 @@ public class ItemCategory {
         meta.getPersistentDataContainer().set(Keys.categoryId, PersistentDataType.STRING, id);
 
         List<String> lore = new ArrayList<>();
-        lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Cost: " + ThieveryTexts.SUCCESS + cost));
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Cost: " + ThieveryTexts.GUI_SUCCESS + cost));
         lore.add(" ");
-        lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "------------------------"));
-        lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Items:"));
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "------------------------"));
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Items:"));
         lore.addAll(CategoryHandler.buildDisplayLines(this));
-        lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "------------------------"));
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "------------------------"));
         lore.add(" ");
         if (active) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.SUCCESS + "Active"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_SUCCESS + "Active"));
         } else {
-            lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Inactive"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Inactive"));
         }
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
-    }
-
-    public boolean matchesPath(ItemStack item) {
-        if (item == null || item.getType().isAir()) {
-            return false;
-        }
-        for (CategoryItemEntry entry : items) {
-            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, entry.getPath())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public double getPathWeightFor(ItemStack item) {
-        if (item == null || item.getType().isAir()) {
-            return value;
-        }
-        for (CategoryItemEntry entry : items) {
-            if (TLibs.getItemAPI().getChecker().checkItemWithPath(item, entry.getPath())) {
-                return entry.getWeight();
-            }
-        }
-        return value;
     }
 }

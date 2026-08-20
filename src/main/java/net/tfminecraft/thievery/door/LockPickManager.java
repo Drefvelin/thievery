@@ -188,7 +188,7 @@ public class LockPickManager {
                 double critical = RiskCalculator.computeCritical(risk, session.dexterity, session.lockpickStrength);
                 String riskTitle = RiskCalculator.formatRiskTitle(risk, critical);
 
-                player.sendTitle(riskTitle, ThieveryTexts.format(bar.toString()), 0, 3, 0);
+                player.sendTitle(riskTitle, ThieveryTexts.formatDisplay(bar.toString()), 0, 3, 0);
             }
         };
 

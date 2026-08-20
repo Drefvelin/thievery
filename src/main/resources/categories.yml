@@ -4,201 +4,176 @@ ac_metal_tier_1:
   icon: v.iron_ingot
   cost: 1
   value: 0.0
-  match:
-    ac_type: metal
-    ac_tier: 1
+  items:
+    - ac_metal_tier_1
+    - v.stone
 ac_metal_tier_2:
   name: "#9a9a9aTier II Metal"
   icon: m.materials.steel_ingot
   cost: 2
   value: 0.0
-  match:
-    ac_type: metal
-    ac_tier: 2
+  items:
+    - ac_metal_tier_2
 ac_metal_tier_3:
   name: "#7b68a6Tier III Metal"
   icon: m.materials.abyssalite_ingot
   cost: 3
   value: 0.0
-  match:
-    ac_type: metal
-    ac_tier: 3
+  items:
+    - ac_metal_tier_3
 ac_metal_tier_4:
   name: "#c9a227Tier IV Metal"
   icon: m.materials.mythril_ingot
   cost: 4
   value: 0.0
-  match:
-    ac_type: metal
-    ac_tier: 4
+  items:
+    - ac_metal_tier_4
 ac_wood_tier_1:
   name: "#e8e0d4Tier I Wood"
   icon: m.materials.refined_barkwood
   cost: 1
   value: 0.0
-  match:
-    ac_type: wood
-    ac_tier: 1
+  items:
+    - ac_wood_tier_1
 ac_wood_tier_2:
   name: "#9a9a9aTier II Wood"
   icon: m.materials.refined_maplewood
   cost: 2
   value: 0.0
-  match:
-    ac_type: wood
-    ac_tier: 2
+  items:
+    - ac_wood_tier_2
 ac_wood_tier_3:
   name: "#7b68a6Tier III Wood"
   icon: m.materials.refined_elderwood
   cost: 3
   value: 0.0
-  match:
-    ac_type: wood
-    ac_tier: 3
+  items:
+    - ac_wood_tier_3
 ac_wood_tier_4:
   name: "#c9a227Tier IV Wood"
   icon: m.materials.refined_demonwood
   cost: 4
   value: 0.0
-  match:
-    ac_type: wood
-    ac_tier: 4
+  items:
+    - ac_wood_tier_4
 ac_crystal_tier_1:
   name: "#e8e0d4Tier I Crystal"
   icon: v.flint
   cost: 1
   value: 0.0
-  match:
-    ac_type: crystal
-    ac_tier: 1
+  items:
+    - ac_crystal_tier_1
 ac_crystal_tier_2:
   name: "#9a9a9aTier II Crystal"
   icon: v.diamond
   cost: 2
   value: 0.0
-  match:
-    ac_type: crystal
-    ac_tier: 2
+  items:
+    - ac_crystal_tier_2
 ac_crystal_tier_3:
   name: "#7b68a6Tier III Crystal"
   icon: m.materials.ignitium
   cost: 3
   value: 0.0
-  match:
-    ac_type: crystal
-    ac_tier: 3
+  items:
+    - ac_crystal_tier_3
 ac_crystal_tier_4:
   name: "#c9a227Tier IV Crystal"
   icon: m.materials.mythril_fragment
   cost: 4
   value: 0.0
-  match:
-    ac_type: crystal
-    ac_tier: 4
+  items:
+    - ac_crystal_tier_4
 ac_leather_tier_1:
   name: "#e8e0d4Tier I Leather"
   icon: m.materials.leather
   cost: 1
   value: 0.0
-  match:
-    ac_type: leather
-    ac_tier: 1
+  items:
+    - ac_leather_tier_1
 ac_leather_tier_2:
   name: "#9a9a9aTier II Leather"
   icon: m.materials.rare_leather
   cost: 2
   value: 0.0
-  match:
-    ac_type: leather
-    ac_tier: 2
+  items:
+    - ac_leather_tier_2
 ac_leather_tier_3:
   name: "#7b68a6Tier III Leather"
   icon: m.materials.epic_leather
   cost: 3
   value: 0.0
-  match:
-    ac_type: leather
-    ac_tier: 3
+  items:
+    - ac_leather_tier_3
 ac_leather_tier_4:
   name: "#c9a227Tier IV Leather"
   icon: m.materials.legendary_leather
   cost: 4
   value: 0.0
-  match:
-    ac_type: leather
-    ac_tier: 4
+  items:
+    - ac_leather_tier_4
 ac_feather_tier_1:
   name: "#e8e0d4Tier I Feather"
   icon: v.feather
   cost: 1
   value: 0.0
-  match:
-    ac_type: feather
-    ac_tier: 1
+  items:
+    - ac_feather_tier_1
 ac_feather_tier_2:
   name: "#9a9a9aTier II Feather"
   icon: m.materials.rare_feather
   cost: 2
   value: 0.0
-  match:
-    ac_type: feather
-    ac_tier: 2
+  items:
+    - ac_feather_tier_2
 ac_feather_tier_3:
   name: "#7b68a6Tier III Feather"
   icon: m.materials.epic_feather
   cost: 3
   value: 0.0
-  match:
-    ac_type: feather
-    ac_tier: 3
+  items:
+    - ac_feather_tier_3
 ac_feather_tier_4:
   name: "#c9a227Tier IV Feather"
   icon: m.materials.legendary_feather
   cost: 4
   value: 0.0
-  match:
-    ac_type: feather
-    ac_tier: 4
+  items:
+    - ac_feather_tier_4
 ac_wool_tier_1:
   name: "#e8e0d4Tier I Wool"
   icon: v.white_wool
   cost: 1
   value: 0.0
-  match:
-    ac_type: wool
-    ac_tier: 1
+  items:
+    - ac_wool_tier_1
 ac_wool_tier_2:
   name: "#9a9a9aTier II Wool"
   icon: m.materials.rare_wool
   cost: 2
   value: 0.0
-  match:
-    ac_type: wool
-    ac_tier: 2
+  items:
+    - ac_wool_tier_2
 ac_wool_tier_3:
   name: "#7b68a6Tier III Wool"
   icon: m.materials.epic_wool
   cost: 3
   value: 0.0
-  match:
-    ac_type: wool
-    ac_tier: 3
+  items:
+    - ac_wool_tier_3
 ac_wool_tier_4:
   name: "#c9a227Tier IV Wool"
   icon: m.materials.legendary_wool
   cost: 4
   value: 0.0
-  match:
-    ac_type: wool
-    ac_tier: 4
+  items:
+    - ac_wool_tier_4
 
-# AC crafted composites
 tier_1_armor:
   name: "#e8e0d4Tier I Armor"
   icon: m.armors.light_custom_chestplate
   cost: 2
   value: 0.0
-  match: composite
   items:
     - ac_light_armor_tier_1
     - ac_medium_armor_tier_1
@@ -210,7 +185,6 @@ tier_2_armor:
   icon: m.armors.light_custom_chestplate
   cost: 3
   value: 0.0
-  match: composite
   items:
     - ac_light_armor_tier_2
     - ac_medium_armor_tier_2
@@ -222,7 +196,6 @@ tier_3_armor:
   icon: m.armors.light_custom_chestplate
   cost: 4
   value: 0.0
-  match: composite
   items:
     - ac_light_armor_tier_3
     - ac_medium_armor_tier_3
@@ -234,7 +207,6 @@ tier_4_armor:
   icon: m.armors.light_custom_chestplate
   cost: 5
   value: 0.0
-  match: composite
   items:
     - ac_light_armor_tier_4
     - ac_medium_armor_tier_4
@@ -246,7 +218,6 @@ tier_1_weapons:
   icon: m.sword.custom_sword
   cost: 2
   value: 0.0
-  match: composite
   items:
     - ac_greataxe_tier_1
     - ac_greathammer_tier_1
@@ -261,7 +232,6 @@ tier_2_weapons:
   icon: m.sword.custom_sword
   cost: 3
   value: 0.0
-  match: composite
   items:
     - ac_greataxe_tier_2
     - ac_greathammer_tier_2
@@ -276,7 +246,6 @@ tier_3_weapons:
   icon: m.sword.custom_sword
   cost: 4
   value: 0.0
-  match: composite
   items:
     - ac_greataxe_tier_3
     - ac_greathammer_tier_3
@@ -291,7 +260,6 @@ tier_4_weapons:
   icon: m.sword.custom_sword
   cost: 5
   value: 0.0
-  match: composite
   items:
     - ac_greataxe_tier_4
     - ac_greathammer_tier_4
@@ -306,7 +274,6 @@ tier_1_bows:
   icon: m.shortbows.custom_shortbow
   cost: 2
   value: 0.0
-  match: composite
   items:
     - ac_shortbow_tier_1
     - ac_crossbow_tier_1
@@ -317,7 +284,6 @@ tier_2_bows:
   icon: m.shortbows.custom_shortbow
   cost: 3
   value: 0.0
-  match: composite
   items:
     - ac_shortbow_tier_2
     - ac_crossbow_tier_2
@@ -328,7 +294,6 @@ tier_3_bows:
   icon: m.shortbows.custom_shortbow
   cost: 4
   value: 0.0
-  match: composite
   items:
     - ac_shortbow_tier_3
     - ac_crossbow_tier_3
@@ -339,13 +304,11 @@ tier_4_bows:
   icon: m.shortbows.custom_shortbow
   cost: 5
   value: 0.0
-  match: composite
   items:
     - ac_shortbow_tier_4
     - ac_crossbow_tier_4
     - ac_longbow_tier_4
 
-# Gemstones (PATH categories — same as any other item category)
 basic_gems:
   name: "#e8e0d4Basic Gemstones"
   icon: m.gemstones.agate

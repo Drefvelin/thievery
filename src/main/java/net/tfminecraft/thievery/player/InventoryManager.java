@@ -89,10 +89,10 @@ public class InventoryManager implements Listener {
     }
 
     private String buildTitle(LoadoutSession session) {
-        return ThieveryTexts.msg(ThieveryTexts.DARK + "Loadout " + ThieveryTexts.MUTED + "("
-                + ThieveryTexts.SUCCESS + session.getDraftBank() + ThieveryTexts.MUTED + " bank · "
-                + ThieveryTexts.WARN + session.getDraftAllocated() + ThieveryTexts.MUTED + "/"
-                + ThieveryTexts.SUCCESS + Cache.categoryPoints + ThieveryTexts.MUTED + ")");
+        return ThieveryTexts.gui(ThieveryTexts.DARK + "Loadout " + ThieveryTexts.MUTED + "("
+                + ThieveryTexts.GUI_SUCCESS + session.getDraftBank() + ThieveryTexts.MUTED + " bank · "
+                + ThieveryTexts.GUI_WARN + session.getDraftAllocated() + ThieveryTexts.MUTED + "/"
+                + ThieveryTexts.GUI_SUCCESS + Cache.categoryPoints + ThieveryTexts.MUTED + ")");
     }
 
     private void fillBottomBar(Inventory inv, int page, int maxPage) {
@@ -103,22 +103,22 @@ public class InventoryManager implements Listener {
         }
 
         inv.setItem(SLOT_CANCEL, createButton(Material.RED_DYE,
-                ThieveryTexts.msg(ThieveryTexts.ERROR + "Cancel"),
-                ThieveryTexts.msg(ThieveryTexts.MUTED + "Discard changes")));
+                ThieveryTexts.gui(ThieveryTexts.ERROR + "Cancel"),
+                ThieveryTexts.gui(ThieveryTexts.MUTED + "Discard changes")));
         inv.setItem(SLOT_CONFIRM, createButton(Material.LIME_DYE,
-                ThieveryTexts.msg(ThieveryTexts.SUCCESS + "Confirm"),
-                ThieveryTexts.msg(ThieveryTexts.MUTED + "Apply loadout")));
+                ThieveryTexts.gui(ThieveryTexts.SUCCESS + "Confirm"),
+                ThieveryTexts.gui(ThieveryTexts.MUTED + "Apply loadout")));
 
         if (page > 0) {
             inv.setItem(SLOT_PREV_PAGE, createButton(Material.ARROW,
-                    ThieveryTexts.msg(ThieveryTexts.WARN + "Previous Page"), null));
+                    ThieveryTexts.gui(ThieveryTexts.GUI_WARN + "Previous Page"), null));
         } else {
             inv.setItem(SLOT_PREV_PAGE, createFiller());
         }
 
         if (page < maxPage) {
             inv.setItem(SLOT_NEXT_PAGE, createButton(Material.ARROW,
-                    ThieveryTexts.msg(ThieveryTexts.WARN + "Next Page"), null));
+                    ThieveryTexts.gui(ThieveryTexts.GUI_WARN + "Next Page"), null));
         } else {
             inv.setItem(SLOT_NEXT_PAGE, createFiller());
         }
@@ -128,7 +128,7 @@ public class InventoryManager implements Listener {
         ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ThieveryTexts.msg(ThieveryTexts.DARK + " "));
+            meta.setDisplayName(ThieveryTexts.gui(ThieveryTexts.DARK + " "));
             item.setItemMeta(meta);
         }
         return item;

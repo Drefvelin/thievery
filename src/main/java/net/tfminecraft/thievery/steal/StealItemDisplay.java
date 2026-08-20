@@ -84,27 +84,27 @@ public final class StealItemDisplay {
         if (ItemValue.isBundle(realItem)) {
             List<String> contentsLore = ItemValue.getRevealableContentsLore(thiefData, realItem);
             if (!contentsLore.isEmpty()) {
-                lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Items:"));
+                lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Items:"));
                 lore.addAll(contentsLore);
                 lore.add("");
             }
-            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Total Value: " + ThieveryTexts.SUCCESS
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Total Value: " + ThieveryTexts.GUI_SUCCESS
                     + formatValue(CategoryHandler.getTotalValue(realItem))));
-            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Click " + ThieveryTexts.MUTED + "to take one item"));
-            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take all you can"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Click " + ThieveryTexts.MUTED + "to take one item"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take all you can"));
         } else {
             int takeable = StealBudget.computeTakeableAmount(realItem, budgetRemaining);
-            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Total Value: " + ThieveryTexts.SUCCESS
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Total Value: " + ThieveryTexts.GUI_SUCCESS
                     + formatValue(CategoryHandler.getTotalValue(display))));
             if (takeable < realItem.getAmount()) {
-                lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Can take up to " + ThieveryTexts.INFO + takeable
+                lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Can take up to " + ThieveryTexts.GUI_INFO + takeable
                         + " " + ThieveryTexts.MUTED + "with current budget"));
             }
-            lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Click " + ThieveryTexts.MUTED + "to take "
-                    + ThieveryTexts.INFO + "one"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Click " + ThieveryTexts.MUTED + "to take "
+                    + ThieveryTexts.GUI_INFO + "one"));
             if (displayAmount > 1) {
-                lore.add(ThieveryTexts.format(ThieveryTexts.WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take "
-                        + ThieveryTexts.INFO + "all"));
+                lore.add(ThieveryTexts.formatGui(ThieveryTexts.GUI_WARN + "Shift-Click " + ThieveryTexts.MUTED + "to take "
+                        + ThieveryTexts.GUI_INFO + "all"));
             }
         }
         appendCluePreviewLore(lore, realItem, budgetRemaining, thiefData, cluePreview);
@@ -132,12 +132,12 @@ public final class StealItemDisplay {
 
         lore.add("");
         if (guaranteed) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "First Take - Guaranteed Clue"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "First Take - Guaranteed Clue"));
         }
-        lore.add(ThieveryTexts.format(ThieveryTexts.ERROR + "Clue chance: "
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Clue chance: "
                 + formatClueLine(one.clueChance(), one.criticalOnTake())));
         if (shouldShowAllPreview(values)) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.ERROR + "Clue chance" + formatAllSuffix()
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Clue chance" + formatAllSuffix()
                     + formatClueLine(all.clueChance(), all.criticalOnTake())));
         }
     }
@@ -153,7 +153,7 @@ public final class StealItemDisplay {
     }
 
     private static String formatAllSuffix() {
-        return ThieveryTexts.MUTED + " (" + ThieveryTexts.WARN + "all" + ThieveryTexts.MUTED + ")"+ThieveryTexts.ERROR+": ";
+        return ThieveryTexts.MUTED + " (" + ThieveryTexts.GUI_WARN + "all" + ThieveryTexts.MUTED + ")" + ThieveryTexts.MUTED + ": ";
     }
 
     public static boolean isStealPane(ItemStack item) {

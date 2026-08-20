@@ -1,7 +1,6 @@
 package net.tfminecraft.thievery.category;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,9 +16,6 @@ import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.Ingredient;
 import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.IngredientType;
 import net.tfminecraft.AdvancedCrafting.Objects.Stats.StatTemplate;
 import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
-import net.tfminecraft.thievery.category.AcCraftRef;
-import net.tfminecraft.thievery.category.CategoryMatchType;
-import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.loader.CategoryLoader;
 import net.tfminecraft.thievery.steal.StealItemDisplay;
@@ -31,17 +27,37 @@ public final class CategoryHandler {
     private CategoryHandler() {
     }
 
-    // --- CategoryMatcher ---
-
     public static boolean matches(ItemCategory category, ItemStack item) {
         if (category == null || item == null || item.getType().isAir()) {
             return false;
         }
-        return switch (category.getMatch().getType()) {
-            case PATH -> category.matchesPath(item);
-            case AC_MATERIAL -> matchesAcMaterial(category, item);
-            case COMPOSITE -> false;
-        };
+        return matchesDirect(category, item) || matchesCraftInCategory(category, item);
+    }
+
+    public static boolean matchesDirect(ItemCategory category, ItemStack item) {
+        if (category == null || item == null || item.getType().isAir()) {
+            return false;
+        }
+        for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
+            if (matchesDirectSlug(entry.getSlug(), item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean matchesCraftInCategory(ItemCategory category, ItemStack item) {
+        AcCraftRef crafted = resolveCraftedMatch(item);
+        if (crafted == null || category == null) {
+            return false;
+        }
+        for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
+            var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
+            if (parsed.isPresent() && parsed.get().equals(crafted)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean matchesAnyActive(PlayerData playerData, ItemStack item) {
@@ -49,34 +65,14 @@ public final class CategoryHandler {
             return false;
         }
 
-        Set<String> activeCategoryIds = new HashSet<>();
-        Set<AcCraftRef> activeCraftRefs = new HashSet<>();
         for (String activeId : playerData.getActiveCategories()) {
             ItemCategory category = CategoryLoader.getById(activeId);
             if (category == null) {
                 continue;
             }
-            if (category.getMatch().getType() == CategoryMatchType.COMPOSITE) {
-                activeCraftRefs.addAll(category.getAcCraftRefs());
-            } else {
-                activeCategoryIds.add(activeId);
-            }
-        }
-
-        for (ItemCategory category : CategoryLoader.getAsList()) {
-            if (category.getMatch().getType() == CategoryMatchType.COMPOSITE) {
-                continue;
-            }
-            if (!activeCategoryIds.contains(category.getId())) {
-                continue;
-            }
             if (matches(category, item)) {
                 return true;
             }
-        }
-
-        if (matchesCraftRef(item, activeCraftRefs)) {
-            return true;
         }
 
         return resolveFirstMatch(item) == null && resolveCraftedMatch(item) == null;
@@ -87,14 +83,40 @@ public final class CategoryHandler {
             return null;
         }
         for (ItemCategory category : CategoryLoader.getAsList()) {
-            if (category.getMatch().getType() == CategoryMatchType.COMPOSITE) {
-                continue;
-            }
-            if (matches(category, item)) {
+            if (matchesDirect(category, item)) {
                 return category;
             }
         }
         return null;
+    }
+
+    public static ItemCategory resolveCraftCategory(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return null;
+        }
+        for (ItemCategory category : CategoryLoader.getAsList()) {
+            if (matchesCraftInCategory(category, item)) {
+                return category;
+            }
+        }
+        return null;
+    }
+
+    public static double resolveItemWeight(ItemStack item) {
+        AcCraftRef crafted = resolveCraftedMatch(item);
+        if (crafted != null) {
+            return CategoryLoader.getWeightForCraftRef(crafted);
+        }
+        ItemCategory category = resolveFirstMatch(item);
+        if (category == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
+            if (matchesDirectSlug(entry.getSlug(), item)) {
+                return entry.getWeight();
+            }
+        }
+        return category.getValue();
     }
 
     public static AcCraftRef resolveCraftedMatch(ItemStack item) {
@@ -114,20 +136,25 @@ public final class CategoryHandler {
         return AcCraftRef.parse("ac_" + templateId + "_tier_" + tier).orElse(null);
     }
 
-    public static boolean matchesCraftRef(ItemStack item, Set<AcCraftRef> activeCraftRefs) {
-        if (activeCraftRefs == null || activeCraftRefs.isEmpty()) {
+    public static boolean matchesDirectSlug(String slug, ItemStack item) {
+        if (slug == null || slug.isBlank() || item == null || item.getType().isAir()) {
             return false;
         }
-        AcCraftRef match = resolveCraftedMatch(item);
-        return match != null && activeCraftRefs.contains(match);
+        if (CategorySlugs.isMaterialSlug(slug)) {
+            return matchesAcMaterialSlug(slug, item);
+        }
+        if (CategorySlugs.isPathSlug(slug)) {
+            return TLibs.getItemAPI().getChecker().checkItemWithPath(item, slug);
+        }
+        return false;
     }
 
-    private static boolean matchesAcMaterial(ItemCategory category, ItemStack item) {
+    private static boolean matchesAcMaterialSlug(String slug, ItemStack item) {
         if (!ThieveryBridge.isPluginReady()) {
             return false;
         }
-        String wantedType = category.getMatch().getAcType();
-        int wantedTier = category.getMatch().getAcTier();
+        String wantedType = CategorySlugs.materialType(slug);
+        int wantedTier = CategorySlugs.materialTier(slug);
 
         Alloy alloy = ThieveryBridge.resolveAlloy(item);
         if (alloy != null && alloy.getData() != null) {
@@ -144,10 +171,9 @@ public final class CategoryHandler {
                 && ingredient.getIngredientData().getTier() == wantedTier;
     }
 
-    // --- CategoryResolver ---
-
     public static ItemCategory resolveCategory(ItemStack item) {
-        return resolveFirstMatch(item);
+        ItemCategory direct = resolveFirstMatch(item);
+        return direct != null ? direct : resolveCraftCategory(item);
     }
 
     public static boolean canRevealItem(PlayerData playerData, ItemStack item) {
@@ -186,35 +212,33 @@ public final class CategoryHandler {
         return getPerItemValue(item) * item.getAmount();
     }
 
-    // --- CategoryDisplayBuilder ---
-
     public static List<String> buildDisplayLines(ItemCategory category) {
-        return switch (category.getMatch().getType()) {
-            case PATH -> buildPathLines(category);
-            case AC_MATERIAL -> buildAcMaterialLines(category);
-            case COMPOSITE -> buildCompositeLines(category);
-        };
-    }
-
-    private static List<String> buildPathLines(ItemCategory category) {
         List<String> lore = new ArrayList<>();
         for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
-            ItemStack preview = TLibs.getItemAPI().getCreator().getItemFromPath(entry.getPath());
-            String itemName = preview != null ? StringFormatter.getName(preview) : entry.getPath();
-            lore.add(formatLine(itemName, entry.getWeight()));
+            String slug = entry.getSlug();
+            if (CategorySlugs.isMaterialSlug(slug)) {
+                lore.addAll(buildMaterialSlugLines(slug, entry.getWeight()));
+            } else if (CategorySlugs.isCraftSlug(slug)) {
+                CategorySlugs.parseCraftRef(slug).ifPresent(ref ->
+                        lore.addAll(buildAcCraftRefLines(ref, entry.getWeight())));
+            } else if (CategorySlugs.isPathSlug(slug)) {
+                ItemStack preview = TLibs.getItemAPI().getCreator().getItemFromPath(slug);
+                String itemName = preview != null ? StringFormatter.getName(preview) : slug;
+                lore.add(formatLine(itemName, entry.getWeight()));
+            }
         }
         return lore;
     }
 
-    private static List<String> buildAcMaterialLines(ItemCategory category) {
+    private static List<String> buildMaterialSlugLines(String slug, double categoryBase) {
         List<String> lore = new ArrayList<>();
         if (!ThieveryBridge.isPluginReady()) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Crafting data unavailable"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Crafting data unavailable"));
             return lore;
         }
 
-        String wantedType = category.getMatch().getAcType();
-        int wantedTier = category.getMatch().getAcTier();
+        String wantedType = CategorySlugs.materialType(slug);
+        int wantedTier = CategorySlugs.materialTier(slug);
         IngredientType type = ThieveryBridge.getIngredientType(wantedType);
 
         for (Ingredient ingredient : ThieveryBridge.getAllIngredients()) {
@@ -226,14 +250,14 @@ public final class CategoryHandler {
                 continue;
             }
             String itemName = resolveIngredientName(ingredient);
-            double example = ItemValue.computeIngredientExampleValue(ingredient, category.getValue());
+            double example = ItemValue.computeIngredientExampleValue(ingredient, categoryBase);
             lore.add(formatLine(itemName, example));
         }
 
         if (ThieveryBridge.hasBaseIngredientForType(wantedType, wantedTier)) {
             String typeName = type != null ? type.getName() : wantedType;
             String label = "Tier " + toRoman(wantedTier) + " " + typeName + " Alloys";
-            lore.add(formatLine(label, estimateAlloyExampleValue(wantedType, wantedTier, category.getValue())));
+            lore.add(formatLine(label, estimateAlloyExampleValue(wantedType, wantedTier, categoryBase)));
         }
         return lore;
     }
@@ -262,18 +286,10 @@ public final class CategoryHandler {
         return null;
     }
 
-    private static List<String> buildCompositeLines(ItemCategory category) {
-        List<String> lore = new ArrayList<>();
-        for (AcCraftRef ref : category.getAcCraftRefs()) {
-            lore.addAll(buildAcCraftRefLines(ref, category.getValue()));
-        }
-        return lore;
-    }
-
     public static List<String> buildAcCraftRefLines(AcCraftRef ref, double categoryBase) {
         List<String> lore = new ArrayList<>();
         if (!ThieveryBridge.isPluginReady()) {
-            lore.add(ThieveryTexts.format(ThieveryTexts.MUTED + "Crafting data unavailable"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Crafting data unavailable"));
             return lore;
         }
 
@@ -343,9 +359,9 @@ public final class CategoryHandler {
     }
 
     private static String formatLine(String itemName, double weight) {
-        return ThieveryTexts.format(ThieveryTexts.WHITE + "- " + itemName + " " + ThieveryTexts.MUTED + "("
-                + ThieveryTexts.WARN + "value: " + ThieveryTexts.SUCCESS
-                + StealItemDisplay.formatValue(weight) + ThieveryTexts.WARN + "/item"
+        return ThieveryTexts.formatGui(ThieveryTexts.WHITE + "- " + itemName + " " + ThieveryTexts.MUTED + "("
+                + ThieveryTexts.GUI_WARN + "value: " + ThieveryTexts.GUI_SUCCESS
+                + StealItemDisplay.formatValue(weight) + ThieveryTexts.GUI_WARN + "/item"
                 + ThieveryTexts.MUTED + ")");
     }
 

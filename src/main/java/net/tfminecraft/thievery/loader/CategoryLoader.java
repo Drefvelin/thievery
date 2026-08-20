@@ -19,7 +19,7 @@ import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.category.AcCraftRef;
-import net.tfminecraft.thievery.category.CategoryMatchType;
+import net.tfminecraft.thievery.category.CategorySlugs;
 import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.category.ItemCategory.CategoryItemEntry;
 
@@ -49,16 +49,33 @@ public class CategoryLoader implements LoaderInterface {
         return categories.get(id);
     }
 
+    public static double getDefaultWeight() {
+        return Cache.defaultItemValue;
+    }
+
+    public static double getWeightForCraftRef(AcCraftRef ref) {
+        if (ref == null) {
+            return Cache.defaultItemValue;
+        }
+        for (ItemCategory category : getAsList()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
+                if (parsed.isPresent() && parsed.get().equals(ref)) {
+                    return entry.getWeight();
+                }
+            }
+        }
+        return Cache.defaultItemValue;
+    }
+
     public static double getWeightForPath(String path) {
         if (path == null || path.isBlank()) {
             return Cache.defaultItemValue;
         }
         for (ItemCategory category : getAsList()) {
-            if (category.getMatch().getType() != CategoryMatchType.PATH) {
-                continue;
-            }
             for (CategoryItemEntry entry : category.getItems()) {
-                if (entry.getPath().equalsIgnoreCase(path)) {
+                if (CategorySlugs.isPathSlug(entry.getSlug())
+                        && entry.getSlug().equalsIgnoreCase(path)) {
                     return entry.getWeight();
                 }
             }
@@ -66,9 +83,11 @@ public class CategoryLoader implements LoaderInterface {
         ItemStack probe = TLibs.getItemAPI().getCreator().getItemFromPath(path);
         if (probe != null) {
             for (ItemCategory category : getAsList()) {
-                if (category.getMatch().getType() == CategoryMatchType.PATH
-                        && category.matchesPath(probe)) {
-                    return category.getPathWeightFor(probe);
+                for (CategoryItemEntry entry : category.getItems()) {
+                    if (CategorySlugs.isPathSlug(entry.getSlug())
+                            && TLibs.getItemAPI().getChecker().checkItemWithPath(probe, entry.getSlug())) {
+                        return entry.getWeight();
+                    }
                 }
             }
         }
@@ -90,41 +109,41 @@ public class CategoryLoader implements LoaderInterface {
         Set<String> keys = config.getKeys(false);
         for (String key : keys) {
             ItemCategory category = new ItemCategory(key, config.getConfigurationSection(key));
-            if (category.getMatch().getType() == CategoryMatchType.PATH) {
-                for (CategoryItemEntry entry : category.getItems()) {
-                    warnDuplicatePath(entry.getPath(), key);
+            for (CategoryItemEntry entry : category.getItems()) {
+                if (CategorySlugs.isPathSlug(entry.getSlug())) {
+                    warnDuplicatePath(entry.getSlug(), key);
                 }
             }
             categories.put(key, category);
         }
 
-        validateComposites();
+        validateCraftSlugs();
     }
 
-    private static void validateComposites() {
+    private static void validateCraftSlugs() {
         for (ItemCategory category : categories.values()) {
-            if (category.getMatch().getType() != CategoryMatchType.COMPOSITE) {
-                continue;
-            }
-            for (AcCraftRef ref : category.getAcCraftRefs()) {
-                if (ThieveryBridge.isPluginReady()
-                        && ThieveryBridge.getStatTemplate(ref.getStatTemplate()) == null) {
-                    Thievery.getInstance().getLogger().warning(
-                            "[Thievery] Composite '" + category.getId()
-                                    + "' references unknown AC stat template '"
-                                    + ref.getStatTemplate() + "' in '" + ref.getRawId() + "'");
+            for (CategoryItemEntry entry : category.getItems()) {
+                if (!CategorySlugs.isCraftSlug(entry.getSlug())) {
+                    continue;
                 }
+                CategorySlugs.parseCraftRef(entry.getSlug()).ifPresent(ref -> {
+                    if (ThieveryBridge.isPluginReady()
+                            && ThieveryBridge.getStatTemplate(ref.getStatTemplate()) == null) {
+                        Thievery.getInstance().getLogger().warning(
+                                "[Thievery] Category '" + category.getId()
+                                        + "' references unknown AC stat template '"
+                                        + ref.getStatTemplate() + "' in '" + ref.getRawId() + "'");
+                    }
+                });
             }
         }
     }
 
     private static void warnDuplicatePath(String path, String categoryId) {
         for (ItemCategory existing : categories.values()) {
-            if (existing.getMatch().getType() != CategoryMatchType.PATH) {
-                continue;
-            }
             for (CategoryItemEntry entry : existing.getItems()) {
-                if (entry.getPath().equalsIgnoreCase(path)
+                if (CategorySlugs.isPathSlug(entry.getSlug())
+                        && entry.getSlug().equalsIgnoreCase(path)
                         && !existing.getId().equalsIgnoreCase(categoryId)) {
                     Thievery.getInstance().getLogger().severe(
                             "[Thievery] Item path '" + path + "' is defined in both '"

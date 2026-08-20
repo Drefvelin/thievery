@@ -92,7 +92,7 @@ public class ConfigLoader {
         Cache.takeValueScale = config.getDouble("clues.take-value-scale", 12.0);
         Cache.takeValueMaxBonus = config.getDouble("clues.take-value-max-bonus", 0.35);
         Cache.takeClueDivisor = Math.max(1.0, config.getDouble("clues.take-clue-divisor", 10.0));
-        Cache.criticalClue = ThieveryTexts.format(config.getString("clues.critical-clue",
+        Cache.criticalClue = ThieveryTexts.formatGui(config.getString("clues.critical-clue",
                 "§7This seems to be the work of #d6cf69{character_name}"));
 
         Parameters.chestBaseSuccessChance = config.getDouble("lockpicking.chest.base-success-chance",

@@ -159,7 +159,7 @@ public final class StealGui {
     public static ItemStack createNothingPane() {
         ItemStack pane = new ItemStack(Material.RED_STAINED_GLASS_PANE);
         ItemMeta meta = pane.getItemMeta();
-        meta.setDisplayName(ThieveryTexts.format(ThieveryTexts.ERROR + "Nothing found."));
+        meta.setDisplayName(ThieveryTexts.gui(ThieveryTexts.ERROR + "Nothing found."));
         meta.getPersistentDataContainer().set(Keys.stealNothing, PersistentDataType.BYTE, (byte) 1);
         pane.setItemMeta(meta);
         return pane;
@@ -168,7 +168,7 @@ public final class StealGui {
     public static ItemStack createHiddenPane() {
         ItemStack hidden = new ItemStack(Material.BARRIER);
         ItemMeta meta = hidden.getItemMeta();
-        meta.setDisplayName(ThieveryTexts.format(ThieveryTexts.MUTED + "HIDDEN!"));
+        meta.setDisplayName(ThieveryTexts.gui(ThieveryTexts.MUTED + "HIDDEN!"));
         meta.getPersistentDataContainer().set(Keys.stealHidden, PersistentDataType.BYTE, (byte) 1);
         hidden.setItemMeta(meta);
         return hidden;
@@ -244,7 +244,7 @@ public final class StealGui {
             return " ";
         }
         String raw = title.toString();
-        return raw.contains("#") ? ThieveryTexts.format(raw) : raw;
+        return raw;
     }
 
     public static String forPickpocket(PlayerData thiefData, int dexterity, StealBudget budget) {
