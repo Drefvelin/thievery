@@ -156,6 +156,59 @@ public class ContainerManager implements Listener {
     }
 
 
+    private void notifyStaffBypass(Player player) {
+        player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Bypassing lock due to staff"));
+    }
+
+    private boolean canAccessContainer(Player player, ContainerData data, boolean notifyBypass) {
+        if (data.canAccess(player)) {
+            return true;
+        }
+        if (player.hasPermission("thievery.admin")) {
+            if (notifyBypass) {
+                notifyStaffBypass(player);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean canAccessContainer(Player player, ContainerData data) {
+        return canAccessContainer(player, data, true);
+    }
+
+    private boolean canAccessLockedContainer(Player player, ContainerData data, boolean notifyBypass) {
+        if (data.getOwner() == null) {
+            return true;
+        }
+        return canAccessContainer(player, data, notifyBypass);
+    }
+
+    private boolean canAccessLockedContainer(Player player, ContainerData data) {
+        return canAccessLockedContainer(player, data, true);
+    }
+
+    private boolean canAccessLockedDoubleChest(Player player, ContainerData left, ContainerData right, boolean notifyBypass) {
+        boolean hasOwner = left.getOwner() != null || right.getOwner() != null;
+        if (!hasOwner) {
+            return true;
+        }
+        if (left.canAccess(player) && right.canAccess(player)) {
+            return true;
+        }
+        if (player.hasPermission("thievery.admin")) {
+            if (notifyBypass) {
+                notifyStaffBypass(player);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean canAccessLockedDoubleChest(Player player, ContainerData left, ContainerData right) {
+        return canAccessLockedDoubleChest(player, left, right, true);
+    }
+
     private net.md_5.bungee.api.chat.TextComponent clickableText(String label, String command) {
         net.md_5.bungee.api.chat.TextComponent tp = new net.md_5.bungee.api.chat.TextComponent(
                 ThieveryTexts.msg(ThieveryTexts.INFO + "[" + label + "]"));
@@ -191,9 +244,7 @@ public class ContainerManager implements Listener {
 
                     ContainerData leftData = containerDataManager.loadContainerData(leftChest.getLocation());
                     ContainerData rightData = containerDataManager.loadContainerData(rightChest.getLocation());
-                    boolean hasOwner = leftData.getOwner() != null || rightData.getOwner() != null;
-
-                    if (hasOwner && (!leftData.canAccess(breaker) || !rightData.canAccess(breaker))) {
+                    if (!canAccessLockedDoubleChest(breaker, leftData, rightData)) {
                         event.setCancelled(true);
                         breaker.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to break this container."));
                         alertAdminsContainerBreak(breaker, location);
@@ -204,7 +255,7 @@ public class ContainerManager implements Listener {
         }
 
         // Prevent break if player cannot access this container
-        if (!data.canAccess(breaker)) {
+        if (!canAccessContainer(breaker, data)) {
             event.setCancelled(true);
             breaker.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to break this container."));
             alertAdminsContainerBreak(breaker, location);
@@ -271,7 +322,7 @@ public class ContainerManager implements Listener {
 
             if (data.getOwner() == null) return;
 
-            if (!data.canAccess(player)) {
+            if (!data.canAccess(player) && !player.hasPermission("thievery.admin")) {
                 long now = System.currentTimeMillis();
                 long last = lastAlertTimestamps.getOrDefault(player.getUniqueId(), 0L);
 
@@ -299,8 +350,7 @@ public class ContainerManager implements Listener {
             Location rightLoc = right.getBlock().getLocation();
             ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
 
-            boolean hasOwner = mainData.getOwner() != null || rightData.getOwner() != null;
-            if (hasOwner && (!mainData.canAccess(player) || !rightData.canAccess(player))) {
+            if (!canAccessLockedDoubleChest(player, mainData, rightData)) {
                 event.setCancelled(true);
                 player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to this container."));
                 return;
@@ -324,7 +374,7 @@ public class ContainerManager implements Listener {
         } else if (holder instanceof Container container) {
             Location location = container.getBlock().getLocation();
             ContainerData data = containerDataManager.loadContainerData(location);
-            if (data.getOwner() != null && !data.canAccess(player)) {
+            if (!canAccessLockedContainer(player, data)) {
                 event.setCancelled(true);
                 player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to this container."));
                 return;
@@ -436,8 +486,7 @@ public class ContainerManager implements Listener {
             ContainerData leftData = containerDataManager.loadContainerData(leftLoc);
             ContainerData rightData = containerDataManager.loadContainerData(rightLoc);
 
-            boolean hasOwner = leftData.getOwner() != null || rightData.getOwner() != null;
-            if (hasOwner && (!leftData.canAccess(player) || !rightData.canAccess(player))) {
+            if (!canAccessLockedDoubleChest(player, leftData, rightData, false)) {
                 event.setCancelled(true);
                 player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to this container."));
             }
@@ -446,7 +495,7 @@ public class ContainerManager implements Listener {
 
         Location location = container.getBlock().getLocation();
         ContainerData data = containerDataManager.loadContainerData(location);
-        if (data.getOwner() != null && !data.canAccess(player)) {
+        if (!canAccessLockedContainer(player, data, false)) {
             event.setCancelled(true);
             player.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "You do not have access to this container."));
         }
