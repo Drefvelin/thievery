@@ -100,6 +100,14 @@ lockpicking:
   door-unlock-window-minutes: 60
   excluded-containers:
     - ENDER_CHEST
+  lockable-furniture:
+    - artifact_display
+    - pedestal
+  lockable-entities:
+    - ARMOR_STAND
+    - ITEM_FRAME
+    - GLOW_ITEM_FRAME
+  display-lock-strength: 0.5
 
   bar:
     length: 20
@@ -129,6 +137,9 @@ robbery:
   ignore:
     name-contains:
       - Slot
+
+graves:
+  budget: 10
 
 pickpocket:
   traits:

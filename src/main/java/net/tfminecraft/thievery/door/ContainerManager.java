@@ -54,6 +54,7 @@ import net.tfminecraft.thievery.player.LockpickDefinition;
 import net.tfminecraft.thievery.player.RiskSource;
 import net.tfminecraft.thievery.database.Database;
 import net.tfminecraft.thievery.steal.StealGuiHolder;
+import net.tfminecraft.RPCharacters.grave.GraveManager;
 import net.tfminecraft.thievery.steal.ChestStealReference;
 import net.tfminecraft.thievery.steal.StealManager;
 import net.tfminecraft.thievery.clue.ClueChecker;
@@ -415,6 +416,7 @@ public class ContainerManager implements Listener {
         if (event.getAction() != Action.LEFT_CLICK_BLOCK) return;
         if (!event.getPlayer().isSneaking()) return;
         if (event.getClickedBlock() == null) return;
+        if (GraveManager.get().isGrave(event.getClickedBlock())) return;
         if (!(event.getClickedBlock().getState() instanceof Container container)) return;
 
         Player player = event.getPlayer();
@@ -468,6 +470,7 @@ public class ContainerManager implements Listener {
     public void onContainerRightClickAccessCheck(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getClickedBlock() == null) return;
+        if (GraveManager.get().isGrave(event.getClickedBlock())) return;
         if (!(event.getClickedBlock().getState() instanceof Container container)) return;
 
         Player player = event.getPlayer();
@@ -608,6 +611,7 @@ public class ContainerManager implements Listener {
     public void onRightClickChest(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
         if (event.getClickedBlock() == null) return;
+        if (GraveManager.get().isGrave(event.getClickedBlock())) return;
         if (!(event.getClickedBlock().getState() instanceof Container)) return;
 
         Player player = event.getPlayer();

@@ -44,6 +44,10 @@ public class Cache {
     public static double takeClueDivisor = 10.0;
     public static String criticalClue = "§7This seems to be the work of #d6cf69{character_name}";
 
+    public static double gravesBudget = 10;
+
+    public static boolean interactibleFurniture = false;
+
     public static boolean requireOwnerOnline = false;
     public static boolean debugAllowOwnChest = false;
     public static boolean debugCluePreview = false;

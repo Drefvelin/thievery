@@ -82,7 +82,7 @@
             <artifactId>RPCharacters</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>D:/Dokumenter/My Plugins/TFMC/RPCharacters/rpcharacters-1.1.5.jar</systemPath>
+            <systemPath>D:/Dokumenter/My Plugins/TFMC/RPCharacters/rpcharacters-1.1.6.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>local</groupId>
@@ -97,6 +97,13 @@
             <version>2.2.7</version>
             <scope>system</scope>
             <systemPath>D:/Dokumenter/My Plugins/TFMC/SimpleFactions/simplefactions-2.8.6.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>local</groupId>
+            <artifactId>InteractibleFurniture</artifactId>
+            <version>0.1.3-BETA</version>
+            <scope>system</scope>
+            <systemPath>D:/Dokumenter/My Plugins/TFMC/InteractibleFurniture/interactiblefurniture-0.1.3-BETA.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>net.coreprotect</groupId>

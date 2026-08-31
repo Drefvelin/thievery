@@ -24,7 +24,8 @@ import net.tfminecraft.thievery.utils.ThieveryTexts;
 public class LockPickManager {
 
     public enum SessionKind {
-        DOOR
+        DOOR,
+        DISPLAY
     }
 
     public enum SelectResult {
@@ -38,12 +39,12 @@ public class LockPickManager {
     private final Random random = new Random();
 
     private final Map<UUID, LockpickSession> sessions = new HashMap<>();
-    private final Map<UUID, Map<Long, Long>> doorCooldownExpiry = new HashMap<>();
+    private final Map<UUID, Map<String, Long>> cooldownExpiry = new HashMap<>();
 
     private static class LockpickSession {
         final ProximityAnchor anchor;
         final SessionKind kind;
-        final Location doorLocation;
+        final String targetId;
         final char[] layout;
         final double lockpickStrength;
         final int dexterity;
@@ -53,11 +54,11 @@ public class LockPickManager {
         int direction = 1;
         BukkitRunnable task;
 
-        LockpickSession(ProximityAnchor anchor, SessionKind kind, Location doorLocation,
+        LockpickSession(ProximityAnchor anchor, SessionKind kind, String targetId,
                 char[] layout, double speed, double lockpickStrength, int dexterity, Runnable onProximityLost) {
             this.anchor = anchor;
             this.kind = kind;
-            this.doorLocation = doorLocation;
+            this.targetId = targetId;
             this.layout = layout;
             this.speed = speed;
             this.lockpickStrength = lockpickStrength;
@@ -69,13 +70,12 @@ public class LockPickManager {
     public void startDoorSession(Player player, Location doorLoc, double effectiveStrength, int dexterity,
             double lockpickStrength) {
         DoorProximityAnchor anchor = new DoorLockpick.DoorProximityAnchor(doorLoc);
-        startSession(player, anchor, SessionKind.DOOR, doorLoc, effectiveStrength, dexterity, lockpickStrength,
-                null);
+        startSession(player, anchor, SessionKind.DOOR, DoorLockpick.doorTargetId(doorLoc), effectiveStrength, dexterity,
+                lockpickStrength, null);
     }
 
-    private void startSession(Player player, ProximityAnchor anchor, SessionKind kind, Location doorLocation,
-            double effectiveStrength, int dexterity, double lockpickStrength,
-            Runnable onProximityLost) {
+    public void startSession(Player player, ProximityAnchor anchor, SessionKind kind, String targetId,
+            double effectiveStrength, int dexterity, double lockpickStrength, Runnable onProximityLost) {
         cancelSession(player.getUniqueId(), true);
 
         int barLength = Parameters.barLength;
@@ -88,7 +88,7 @@ public class LockPickManager {
         }
         int failCount = barLength - successCount - breakCount;
 
-        double debuffFactor = getDebuffFactor(player.getUniqueId(), doorLocation);
+        double debuffFactor = getDebuffFactor(player.getUniqueId(), targetId);
         int debuffBreaks = (int) Math.round(failCount * debuffFactor);
         failCount -= debuffBreaks;
         breakCount += debuffBreaks;
@@ -123,7 +123,7 @@ public class LockPickManager {
                 Parameters.baseBarSpeed * (1.0 - dexterity * Parameters.dexSpeedReductionPerLevel));
 
         UUID uuid = player.getUniqueId();
-        LockpickSession session = new LockpickSession(anchor, kind, doorLocation, layout, speed,
+        LockpickSession session = new LockpickSession(anchor, kind, targetId, layout, speed,
                 lockpickStrength, dexterity, onProximityLost);
         session.position = startPosition;
 
@@ -197,13 +197,6 @@ public class LockPickManager {
         task.runTaskTimer(Thievery.getInstance(), 0L, 1L);
     }
 
-    /** @deprecated use startDoorSession */
-    @Deprecated
-    public void startSession(Player player, Location doorLoc, double effectiveStrength, int dexterity,
-            double lockpickStrength) {
-        startDoorSession(player, doorLoc, effectiveStrength, dexterity, lockpickStrength);
-    }
-
     public SelectResult handleSelect(Player player) {
         UUID uuid = player.getUniqueId();
         LockpickSession session = sessions.get(uuid);
@@ -231,7 +224,7 @@ public class LockPickManager {
         cancelSession(uuid, false);
     }
 
-    public void cancelSession(UUID uuid, boolean penalizeDoor) {
+    public void cancelSession(UUID uuid, boolean penalize) {
         LockpickSession session = sessions.remove(uuid);
         if (session == null) {
             return;
@@ -239,8 +232,8 @@ public class LockPickManager {
         if (session.task != null) {
             session.task.cancel();
         }
-        if (penalizeDoor && session.doorLocation != null) {
-            applyDoorCooldown(uuid, session.doorLocation);
+        if (penalize) {
+            applyCooldown(uuid, session.targetId);
         }
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
@@ -257,24 +250,32 @@ public class LockPickManager {
         return session != null ? session.kind : null;
     }
 
-    public Location getSessionDoor(UUID uuid) {
+    public String getSessionTargetId(UUID uuid) {
         LockpickSession session = sessions.get(uuid);
-        return session != null ? session.doorLocation : null;
+        return session != null ? session.targetId : null;
     }
 
     public boolean isOnCooldown(UUID uuid, Location doorLocation) {
-        return getDebuffFactor(uuid, doorLocation) > 0;
+        return isOnCooldown(uuid, DoorLockpick.doorTargetId(doorLocation));
+    }
+
+    public boolean isOnCooldown(UUID uuid, String targetId) {
+        return getDebuffFactor(uuid, targetId) > 0;
     }
 
     public double getDebuffFactor(UUID uuid, Location doorLocation) {
-        if (doorLocation == null) {
+        return getDebuffFactor(uuid, DoorLockpick.doorTargetId(doorLocation));
+    }
+
+    public double getDebuffFactor(UUID uuid, String targetId) {
+        if (targetId == null || targetId.isEmpty()) {
             return 0.0;
         }
-        Map<Long, Long> doorMap = doorCooldownExpiry.get(uuid);
-        if (doorMap == null) {
+        Map<String, Long> targetMap = cooldownExpiry.get(uuid);
+        if (targetMap == null) {
             return 0.0;
         }
-        Long expiry = doorMap.get(packDoorKey(doorLocation));
+        Long expiry = targetMap.get(targetId);
         if (expiry == null) {
             return 0.0;
         }
@@ -286,51 +287,40 @@ public class LockPickManager {
     }
 
     public long getCooldownRemainingSeconds(UUID uuid, Location doorLocation) {
-        if (doorLocation == null) {
+        return getCooldownRemainingSeconds(uuid, DoorLockpick.doorTargetId(doorLocation));
+    }
+
+    public long getCooldownRemainingSeconds(UUID uuid, String targetId) {
+        if (targetId == null || targetId.isEmpty()) {
             return 0;
         }
-        Map<Long, Long> doorMap = doorCooldownExpiry.get(uuid);
-        if (doorMap == null) {
+        Map<String, Long> targetMap = cooldownExpiry.get(uuid);
+        if (targetMap == null) {
             return 0;
         }
-        Long expiry = doorMap.get(packDoorKey(doorLocation));
+        Long expiry = targetMap.get(targetId);
         if (expiry == null) {
             return 0;
         }
         return Math.max(0, (expiry - System.currentTimeMillis()) / 1000);
     }
 
-    private void applyDoorCooldown(UUID uuid, Location doorLocation) {
-        if (doorLocation == null) {
+    private void applyCooldown(UUID uuid, String targetId) {
+        if (targetId == null || targetId.isEmpty()) {
             return;
         }
-        doorCooldownExpiry
+        cooldownExpiry
                 .computeIfAbsent(uuid, ignored -> new HashMap<>())
-                .put(packDoorKey(doorLocation), System.currentTimeMillis() + Parameters.lockpickFailCooldownMs);
-    }
-
-    public static long packDoorKey(Location location) {
-        if (location == null || location.getWorld() == null) {
-            return 0L;
-        }
-        return packDoorKey(location.getBlockX(), location.getBlockY(), location.getBlockZ(),
-                location.getWorld().getName().hashCode());
-    }
-
-    private static long packDoorKey(int x, int y, int z, int worldHash) {
-        return ((long) worldHash & 0xFFFFL) << 48
-                | ((long) x & 0x3FFFFFL) << 30
-                | ((long) y & 0xFFFL) << 18
-                | ((long) z & 0x3FFFFFL);
+                .put(targetId, System.currentTimeMillis() + Parameters.lockpickFailCooldownMs);
     }
 
     public void clearCooldown(UUID uuid) {
         if (uuid != null) {
-            doorCooldownExpiry.remove(uuid);
+            cooldownExpiry.remove(uuid);
         }
     }
 
     public void clearAllCooldowns() {
-        doorCooldownExpiry.clear();
+        cooldownExpiry.clear();
     }
 }

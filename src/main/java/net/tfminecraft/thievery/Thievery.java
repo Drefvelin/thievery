@@ -28,6 +28,9 @@ import net.tfminecraft.thievery.player.PickpocketManager;
 import net.tfminecraft.thievery.player.PlayerManager;
 import net.tfminecraft.thievery.player.RiskSetService;
 import net.tfminecraft.thievery.robbery.RobberyManager;
+import net.tfminecraft.thievery.steal.DisplayStealManager;
+import net.tfminecraft.thievery.steal.FurnitureDisplayListener;
+import net.tfminecraft.thievery.steal.GraveStealListener;
 import net.tfminecraft.thievery.steal.StealGuiUpdater;
 import net.tfminecraft.thievery.steal.StealManager;
 
@@ -74,6 +77,7 @@ public class Thievery extends JavaPlugin {
         getCommand("pickpocket").setTabCompleter(new PickpocketCommand(pickpocketManager));
 
         getServer().getPluginManager().registerEvents(stealManager, this);
+        getServer().getPluginManager().registerEvents(new GraveStealListener(), this);
         getServer().getPluginManager().registerEvents(clearCluesManager, this);
         getServer().getPluginManager().registerEvents(containerManager, this);
         getServer().getPluginManager().registerEvents(doorManager, this);
@@ -83,6 +87,11 @@ public class Thievery extends JavaPlugin {
         getServer().getPluginManager().registerEvents(inventoryManager, this);
         getServer().getPluginManager().registerEvents(new KeychainListener(), this);
         getServer().getPluginManager().registerEvents(new KeyCopyListener(), this);
+        DisplayStealManager displayStealManager = new DisplayStealManager(lockPickManager);
+        getServer().getPluginManager().registerEvents(displayStealManager, this);
+        if (Cache.interactibleFurniture) {
+            getServer().getPluginManager().registerEvents(new FurnitureDisplayListener(displayStealManager), this);
+        }
 
         playerManager.start();
 
@@ -128,6 +137,10 @@ public class Thievery extends JavaPlugin {
         return instance;
     }
 
+    public LockPickManager getLockPickManager() {
+        return lockPickManager;
+    }
+
     public ContainerManager getContainerManager() {
         return containerManager;
     }
@@ -162,6 +175,9 @@ public class Thievery extends JavaPlugin {
         if (plugin != null && plugin.isEnabled() && plugin instanceof CoreProtect) {
             Cache.coreProtect = true;
         }
+
+        Plugin furniture = getServer().getPluginManager().getPlugin("InteractibleFurniture");
+        Cache.interactibleFurniture = furniture != null && furniture.isEnabled();
     }
 
     public static CoreProtectAPI getCoreProtect() {

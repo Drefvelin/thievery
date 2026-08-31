@@ -1,6 +1,9 @@
 package net.tfminecraft.thievery.door;
 
+import java.util.UUID;
+
 import org.bukkit.Location;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import net.tfminecraft.thievery.cache.Parameters;
@@ -17,6 +20,23 @@ public final class DoorLockpick {
 
     public static boolean isWithinDoorRange(Player player, Location doorCanonical, double maxDistance) {
         return player.getLocation().distance(getDoorCenter(doorCanonical)) <= maxDistance;
+    }
+
+    public static String doorTargetId(Location canonical) {
+        if (canonical == null || canonical.getWorld() == null) {
+            return "";
+        }
+        return "door:" + canonical.getWorld().getName()
+                + ":" + canonical.getBlockX()
+                + ":" + canonical.getBlockY()
+                + ":" + canonical.getBlockZ();
+    }
+
+    public static String entityTargetId(UUID entityId) {
+        if (entityId == null) {
+            return "";
+        }
+        return "entity:" + entityId;
     }
 
     public static double computeSuccessChance(int dexterity, double lockpickStrength, double baseChance) {
@@ -64,6 +84,32 @@ public final class DoorLockpick {
 
         public Location getDoorLocation() {
             return doorLocation;
+        }
+    }
+
+    public static final class EntityProximityAnchor implements ProximityAnchor {
+
+        private final Entity entity;
+
+        public EntityProximityAnchor(Entity entity) {
+            this.entity = entity;
+        }
+
+        @Override
+        public boolean isInRange(Player actor) {
+            if (entity == null || !entity.isValid()) {
+                return false;
+            }
+            return actor.getLocation().distance(entity.getLocation()) <= Parameters.doorMaxDistance;
+        }
+
+        @Override
+        public void onOutOfRange(Player actor) {
+            actor.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "Lockpicking cancelled - you moved too far."));
+        }
+
+        public Entity getEntity() {
+            return entity;
         }
     }
 }

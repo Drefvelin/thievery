@@ -66,8 +66,8 @@ public class GuildChecker {
         }
 
         String denyMsg = guild != null
-                ? "Cannot lockpick \u2014 " + subjectName + " has no members online."
-                : "Cannot lockpick \u2014 " + subjectName + " is not online.";
+                ? "Cannot lockpick - " + subjectName + " has no members online."
+                : "Cannot lockpick - " + subjectName + " is not online.";
         return new LockpickAccessResult(LockpickAccessResult.Type.DENY, denyMsg);
     }
 }

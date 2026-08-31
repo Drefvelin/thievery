@@ -4,13 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
-
-import me.Plugins.SimpleFactions.Guild.Guild;
-import me.Plugins.SimpleFactions.Managers.FactionManager;
 
 public class ContainerData {
 
@@ -42,20 +37,7 @@ public class ContainerData {
     }
 
     public boolean canAccess(Player p) {
-        if (lockState == LockState.PUBLIC) return true;
-        if (owner == null) return true;
-        if (owner.equals(p.getUniqueId())) return true;
-        if (lockState == LockState.PRIVATE) return false;
-
-        OfflinePlayer o = Bukkit.getOfflinePlayer(owner);
-        if (o.getName() == null) return false;
-
-        Guild ownerGuild = FactionManager.getGuildByMember(o.getName());
-        Guild openerGuild = FactionManager.getGuildByMember(p.getName());
-
-        if (ownerGuild == null || openerGuild == null) return false;
-
-        return ownerGuild.getId().equals(openerGuild.getId());
+        return LockAccess.canAccess(p, owner, lockState);
     }
 
     public void setOwner(UUID owner) {

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -31,6 +32,7 @@ public class ConfigLoader {
         RobberyLoader.load(config);
         PickpocketLoader.load(config);
         DoorLoader.load(config);
+        Cache.gravesBudget = config.getDouble("graves.budget", PickpocketLoader.getBudget());
 
         Cache.cooldown = config.getInt("cooldown", 3);
         Cache.radius = config.getInt("lockpick-range", config.getInt("radius", 4));
@@ -125,6 +127,10 @@ public class ConfigLoader {
         Parameters.randomFlipChance = config.getDouble("lockpicking.bar.random-flip-chance", 0.03);
         Parameters.lockpickAttribute = config.getString("lockpicking.attribute", "dexterity");
         Parameters.excludedContainerMaterials = loadExcludedContainers(config);
+        Parameters.lockableFurnitureIds = loadLockableFurnitureIds(config);
+        Parameters.lockableEntityTypes = loadLockableEntityTypes(config);
+        Parameters.displayLockStrength = Math.min(1.0, Math.max(0.0,
+                config.getDouble("lockpicking.display-lock-strength", 0.5)));
     }
 
     private static java.util.Set<Material> loadExcludedContainers(FileConfiguration config) {
@@ -145,5 +151,32 @@ public class ConfigLoader {
             return java.util.EnumSet.of(Material.ENDER_CHEST);
         }
         return excluded;
+    }
+
+    private static java.util.Set<String> loadLockableFurnitureIds(FileConfiguration config) {
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (String entry : config.getStringList("lockpicking.lockable-furniture")) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+            ids.add(entry.trim().toLowerCase());
+        }
+        return ids;
+    }
+
+    private static java.util.Set<EntityType> loadLockableEntityTypes(FileConfiguration config) {
+        java.util.Set<EntityType> types = java.util.EnumSet.noneOf(EntityType.class);
+        for (String entry : config.getStringList("lockpicking.lockable-entities")) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+            try {
+                types.add(EntityType.valueOf(entry.trim().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
+                Thievery.getInstance().getLogger().warning(
+                        "Unknown lockpicking lockable entity type: " + entry);
+            }
+        }
+        return types;
     }
 }

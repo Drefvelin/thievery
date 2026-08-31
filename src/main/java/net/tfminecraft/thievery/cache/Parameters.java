@@ -1,9 +1,11 @@
 package net.tfminecraft.thievery.cache;
 
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.bukkit.Material;
+import org.bukkit.entity.EntityType;
 
 /**
  * Central tuning parameters for the door locking and lockpicking system.
@@ -42,4 +44,19 @@ public class Parameters {
     public static long doorUnlockWindowMs = 60L * 60L * 1000L;
 
     public static Set<Material> excludedContainerMaterials = EnumSet.of(Material.ENDER_CHEST);
+
+    public static Set<String> lockableFurnitureIds = new HashSet<>();
+    public static Set<EntityType> lockableEntityTypes = EnumSet.noneOf(EntityType.class);
+    public static double displayLockStrength = 0.5;
+
+    public static boolean isLockableFurnitureId(String furnitureId) {
+        if (furnitureId == null || furnitureId.isBlank()) {
+            return false;
+        }
+        return lockableFurnitureIds.contains(furnitureId.toLowerCase());
+    }
+
+    public static boolean isLockableEntityType(EntityType type) {
+        return type != null && lockableEntityTypes.contains(type);
+    }
 }

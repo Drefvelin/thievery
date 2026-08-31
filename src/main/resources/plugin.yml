@@ -4,8 +4,8 @@ name: Thievery
 version: 1.0
 author: Drefvelin
 
-depend: [MMOCore, TLibs]
-softdepend: [OpenRP, AdvancedCrafting]
+depend: [MMOCore, TLibs, RPCharacters]
+softdepend: [OpenRP, AdvancedCrafting, InteractibleFurniture]
 loadbefore: [OpenRP]
 
 commands:

@@ -117,10 +117,10 @@ public class DoorManager implements Listener {
             }
 
             if (lockPickManager.isInSession(uuid)) {
-                if (isSameDoor(lockPickManager.getSessionDoor(uuid), canonical)) {
+                if (DoorLockpick.doorTargetId(canonical).equals(lockPickManager.getSessionTargetId(uuid))) {
                     handleSelectResult(player, lockPickManager.handleSelect(player), canonical);
                 } else {
-                    // Different door — cancel old session (penalize old door) and start fresh
+                    // Different target - cancel old session (penalize) and start fresh
                     lockPickManager.cancelSession(uuid, true);
                     startLockpicking(player, canonical, data);
                 }
@@ -400,12 +400,5 @@ public class DoorManager implements Listener {
         }
     }
 
-    private boolean isSameDoor(Location a, Location b) {
-        if (a == null || b == null) return false;
-        return a.getWorld().equals(b.getWorld())
-                && a.getBlockX() == b.getBlockX()
-                && a.getBlockY() == b.getBlockY()
-                && a.getBlockZ() == b.getBlockZ();
-    }
 }
 
