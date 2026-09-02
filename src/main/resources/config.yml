@@ -61,7 +61,7 @@ tier-values:
 
 clues:
   recent-max: 6
-  recent-cooldown-hours: 1
+  recent-cooldown-hours: 72
   critical-cooldown-hours: 24
   min-clues-door: 0
   min-clues-container: 1
