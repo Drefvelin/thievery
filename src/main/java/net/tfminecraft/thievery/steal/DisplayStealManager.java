@@ -104,6 +104,13 @@ public class DisplayStealManager implements Listener {
                 + "You can only change the lock state on containers you own."));
     }
 
+    static boolean isLockableDisplay(Entity entity) {
+        if (entity == null || !Parameters.isLockableEntityType(entity.getType())) {
+            return false;
+        }
+        return !(entity instanceof ArmorStand stand) || !stand.isInvisible();
+    }
+
     static void applyToggle(Player player, UUID owner, java.util.function.Consumer<UUID> claim,
             java.util.function.Supplier<LockState> rotate) {
         if (owner == null) {
@@ -340,7 +347,7 @@ public class DisplayStealManager implements Listener {
     public void onEntityPlace(EntityPlaceEvent event) {
         Entity entity = event.getEntity();
         Player player = event.getPlayer();
-        if (player == null || !Parameters.isLockableEntityType(entity.getType())) {
+        if (player == null || !isLockableDisplay(entity)) {
             return;
         }
         EntityLockData data = lockDataManager.load(entity.getUniqueId());
@@ -357,7 +364,7 @@ public class DisplayStealManager implements Listener {
     public void onHangingPlace(HangingPlaceEvent event) {
         Entity entity = event.getEntity();
         Player player = event.getPlayer();
-        if (player == null || !Parameters.isLockableEntityType(entity.getType())) {
+        if (player == null || !isLockableDisplay(entity)) {
             return;
         }
         EntityLockData data = lockDataManager.load(entity.getUniqueId());
@@ -373,7 +380,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent event) {
         Entity entity = event.getEntity();
-        if (!Parameters.isLockableEntityType(entity.getType()) || entity instanceof Hanging) {
+        if (!isLockableDisplay(entity) || entity instanceof Hanging) {
             return;
         }
         if (!(event.getDamager() instanceof Player player)) {
@@ -402,7 +409,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
         Entity entity = event.getRightClicked();
-        if (!Parameters.isLockableEntityType(entity.getType())) {
+        if (!isLockableDisplay(entity)) {
             return;
         }
         Player player = event.getPlayer();
@@ -422,7 +429,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onInteractEntity(PlayerInteractEntityEvent event) {
         Entity entity = event.getRightClicked();
-        if (!Parameters.isLockableEntityType(entity.getType())) {
+        if (!isLockableDisplay(entity)) {
             return;
         }
         if (entity.getType() == EntityType.ARMOR_STAND) {
@@ -445,7 +452,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onHangingBreak(HangingBreakByEntityEvent event) {
         Entity entity = event.getEntity();
-        if (!Parameters.isLockableEntityType(entity.getType())) {
+        if (!isLockableDisplay(entity)) {
             return;
         }
         if (!(event.getRemover() instanceof Player player)) {
@@ -496,7 +503,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onLockableDeath(EntityDeathEvent event) {
         Entity entity = event.getEntity();
-        if (!Parameters.isLockableEntityType(entity.getType())) {
+        if (!isLockableDisplay(entity)) {
             return;
         }
         lockDataManager.delete(entity.getUniqueId());
@@ -505,7 +512,7 @@ public class DisplayStealManager implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onHangingRemoved(HangingBreakEvent event) {
         Entity entity = event.getEntity();
-        if (!Parameters.isLockableEntityType(entity.getType())) {
+        if (!isLockableDisplay(entity)) {
             return;
         }
         lockDataManager.delete(entity.getUniqueId());
