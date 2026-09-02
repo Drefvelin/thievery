@@ -1,3 +1,12 @@
+# Steal budget cost per 1 denar (physical coins and robbery pouch). Coins require this category in loadout.
+money:
+  name: "#c9a227Money"
+  icon: m.currency.pouch_of_coins
+  cost: 1
+  type: money
+  amount_per_money: 0.1
+  items: []
+
 # AC material tiers
 ac_metal_tier_1:
   name: "#e8e0d4Tier I Metal"

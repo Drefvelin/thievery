@@ -11,6 +11,7 @@ public class Keys {
     public static final NamespacedKey stealFiller = new NamespacedKey(Thievery.getInstance(), "steal_filler");
     public static final NamespacedKey stealNothing = new NamespacedKey(Thievery.getInstance(), "steal_nothing");
     public static final NamespacedKey stealHidden = new NamespacedKey(Thievery.getInstance(), "steal_hidden");
+    public static final NamespacedKey stealRobberyPouch = new NamespacedKey(Thievery.getInstance(), "steal_robbery_pouch");
     public static final NamespacedKey keychainMarker = new NamespacedKey(Thievery.getInstance(), "keychain_marker");
     public static final NamespacedKey keychainKeys = new NamespacedKey(Thievery.getInstance(), "keychain_keys");
     public static final NamespacedKey keyMoldMarker = new NamespacedKey(Thievery.getInstance(), "key_mold_marker");

@@ -16,6 +16,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import me.Plugins.TLibs.TLibs;
+import net.tfminecraft.thievery.loader.CategoryLoader;
+import net.tfminecraft.thievery.category.DenarMoney;
+import net.tfminecraft.thievery.category.ItemCategory;
+import net.tfminecraft.thievery.loader.RobberyLoader;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.steal.StealGuiHolder;
 import net.tfminecraft.thievery.player.RiskCalculator;
@@ -27,6 +32,8 @@ import net.tfminecraft.thievery.utils.ThieveryTexts;
 import net.tfminecraft.thievery.utils.Keys;
 
 public final class StealGui {
+
+    public static final int ROBBERY_POUCH_GUI_SLOT = 8;
 
     private StealGui() {}
 
@@ -49,6 +56,17 @@ public final class StealGui {
         public static Layout create(int logicalSlotCount) {
             int guiSize = resolveGuiSize(logicalSlotCount);
             Map<Integer, Integer> logicalToGui = buildRandomLayout(logicalSlotCount, guiSize);
+            Map<Integer, Integer> guiToLogical = new HashMap<>();
+            for (Map.Entry<Integer, Integer> entry : logicalToGui.entrySet()) {
+                guiToLogical.put(entry.getValue(), entry.getKey());
+            }
+            return new Layout(logicalSlotCount, guiSize,
+                    Collections.unmodifiableMap(logicalToGui), Collections.unmodifiableMap(guiToLogical));
+        }
+
+        public static Layout createRobbery(int logicalSlotCount) {
+            int guiSize = 54;
+            Map<Integer, Integer> logicalToGui = buildRobberyRandomLayout(logicalSlotCount, guiSize);
             Map<Integer, Integer> guiToLogical = new HashMap<>();
             for (Map.Entry<Integer, Integer> entry : logicalToGui.entrySet()) {
                 guiToLogical.put(entry.getValue(), entry.getKey());
@@ -93,6 +111,25 @@ public final class StealGui {
             List<Integer> guiSlots = new ArrayList<>();
             for (int i = 0; i < guiSize; i++) {
                 guiSlots.add(i);
+            }
+            Collections.shuffle(guiSlots);
+
+            for (int logicalSlot = 0; logicalSlot < logicalSlotCount; logicalSlot++) {
+                if (guiSlots.isEmpty()) {
+                    break;
+                }
+                layout.put(logicalSlot, guiSlots.remove(0));
+            }
+            return layout;
+        }
+
+        private static Map<Integer, Integer> buildRobberyRandomLayout(int logicalSlotCount, int guiSize) {
+            Map<Integer, Integer> layout = new HashMap<>();
+            List<Integer> guiSlots = new ArrayList<>();
+            for (int i = 0; i < guiSize; i++) {
+                if (i != ROBBERY_POUCH_GUI_SLOT) {
+                    guiSlots.add(i);
+                }
             }
             Collections.shuffle(guiSlots);
 
@@ -174,6 +211,44 @@ public final class StealGui {
         return hidden;
     }
 
+    public static ItemStack createRobberyPouchPane(double balance) {
+        ItemCategory money = CategoryLoader.getMoneyCategory();
+        String iconPath = money != null ? money.getIcon() : "m.currency.pouch_of_coins";
+        ItemStack item = TLibs.getItemAPI().getCreator().getItemFromPath(iconPath);
+        if (item == null) {
+            item = new ItemStack(Material.GOLD_INGOT);
+        }
+        item = item.clone();
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+        meta.setDisplayName(ThieveryTexts.gui(ThieveryTexts.GUI_WARN + "Pouch"));
+        List<String> lore = new ArrayList<>();
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Balance: "
+                + ThieveryTexts.GUI_SUCCESS + String.format("%.2f", balance) + "d"));
+        lore.add(" ");
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Click: "
+                + ThieveryTexts.GUI_SUCCESS + RobberyLoader.getPouchClickAmount() + "d"));
+        lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "Shift-click: "
+                + ThieveryTexts.GUI_SUCCESS + RobberyLoader.getPouchShiftAmount() + "d"));
+        meta.setLore(lore);
+        meta.getPersistentDataContainer().set(Keys.stealRobberyPouch, PersistentDataType.BYTE, (byte) 1);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static void placeRobberyPouchSlot(Inventory gui, Player victim, PlayerData thiefData, StealBudget budget) {
+        if (DenarMoney.canStealPouch(thiefData)) {
+            double balance = DenarMoney.getPouchBalance(victim);
+            if (balance > 0.0) {
+                gui.setItem(ROBBERY_POUCH_GUI_SLOT, createRobberyPouchPane(balance));
+                return;
+            }
+        }
+        gui.setItem(ROBBERY_POUCH_GUI_SLOT, createFillerPane());
+    }
+
     public static boolean isUnknownPane(ItemStack item) {
         return hasKey(item, Keys.stealUnknown);
     }
@@ -188,6 +263,10 @@ public final class StealGui {
 
     public static boolean isHiddenPane(ItemStack item) {
         return hasKey(item, Keys.stealHidden);
+    }
+
+    public static boolean isRobberyPouchPane(ItemStack item) {
+        return hasKey(item, Keys.stealRobberyPouch);
     }
 
     public static boolean isNonInteractivePane(ItemStack item) {
@@ -302,6 +381,7 @@ public final class StealGui {
         Inventory gui = Bukkit.createInventory(holder, guiSize, title);
         ItemStack fillerPane = createFillerPane();
         Set<Integer> assignedLootSlots = new HashSet<>(layout.getLogicalSlotToGuiSlot().values());
+        assignedLootSlots.add(ROBBERY_POUCH_GUI_SLOT);
 
         for (Map.Entry<Integer, Integer> entry : layout.getLogicalSlotToGuiSlot().entrySet()) {
             int logicalSlot = entry.getKey();
@@ -315,6 +395,8 @@ public final class StealGui {
                 gui.setItem(guiSlot, display);
             }
         }
+
+        placeRobberyPouchSlot(gui, victim, thiefData, budget);
 
         for (int guiSlot = 0; guiSlot < guiSize; guiSlot++) {
             if (!assignedLootSlots.contains(guiSlot) || gui.getItem(guiSlot) == null) {

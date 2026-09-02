@@ -134,6 +134,9 @@ robbery:
   duration-seconds: 120
   max-distance: 4
   accept-timeout-seconds: 30
+  # Robbery GUI slot 8 only. Transfers victim pouch balance to robber pouch via DenarEconomy.
+  pouch-click-amount: 10
+  pouch-shift-amount: 100
   ignore:
     name-contains:
       - Slot

@@ -51,3 +51,19 @@ Manual checks after the matching implementation batch. Player-facing strings mus
 | P1 | Display cancel message does not say "door" |
 | L12 | Break/kill display deletes entity lock file |
 | P2 | No U+2014 in new messages or titles |
+
+## Money and player robbery
+
+| # | Check |
+|---|--------|
+| M1 | Loadout **without** `money`: Denar coin stacks hidden/unstealable in pickpocket, chest steal, display dump |
+| M2 | Loadout **with** `money`: coin steal value = `coin.value * stack * amount_per_money`; budget limits quantity |
+| M3 | `/robbery start` + accept: GUI slot 8 (top-right) shows pouch when victim balance > 0 and thief has `money` |
+| M4 | Slot 8 left-click takes up to `pouch-click-amount` (10); shift-left up to `pouch-shift-amount` (100) |
+| M5 | Pouch take capped by victim balance, remaining budget (`floor(remaining / amount_per_money)`), and config amounts |
+| M6 | Pouch debits victim DenarEconomy pouch, credits robber pouch (not coin items); GUI title budget updates |
+| M7 | Without `money` in loadout: slot 8 is filler; coins in shuffled grid stay hidden |
+| M8 | Victim with 7 denars: single click takes 7 |
+| M9 | Grave steal **without** `money`: coins in grave are skipped; message "nothing you can steal" if only coins |
+| M10 | Grave steal **with** `money`: coins taken greedily like other items |
+| M11 | No U+2014 in new player-facing strings (pouch pane, grave rob hint, steal messages) |

@@ -35,11 +35,15 @@ public class ItemCategory {
         }
     }
 
+    public static final String TYPE_MONEY = "money";
+
     private final String id;
     private final String name;
     private final String icon;
     private final int cost;
     private final double value;
+    private final String type;
+    private final double amountPerMoney;
     private final boolean loadoutVisible;
     private final List<CategoryItemEntry> items = new ArrayList<>();
 
@@ -49,6 +53,12 @@ public class ItemCategory {
         icon = config.getString("icon", "v.paper");
         cost = config.getInt("cost", 1);
         value = config.getDouble("value", 1.0);
+        type = config.getString("type", "");
+        if (config.contains("amount_per_money")) {
+            amountPerMoney = config.getDouble("amount_per_money");
+        } else {
+            amountPerMoney = value;
+        }
         if (config.contains("loadout")) {
             loadoutVisible = config.getBoolean("loadout");
         } else {
@@ -95,6 +105,18 @@ public class ItemCategory {
 
     public double getValue() {
         return value;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public boolean isMoneyType() {
+        return TYPE_MONEY.equalsIgnoreCase(type);
+    }
+
+    public double getAmountPerMoney() {
+        return amountPerMoney;
     }
 
     public boolean isLoadoutVisible() {

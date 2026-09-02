@@ -38,6 +38,9 @@ public final class CategoryHandler {
         if (category == null || item == null || item.getType().isAir()) {
             return false;
         }
+        if (category.isMoneyType()) {
+            return DenarMoney.isMoney(item);
+        }
         for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
             if (matchesDirectSlug(entry.getSlug(), item)) {
                 return true;
@@ -65,6 +68,11 @@ public final class CategoryHandler {
             return false;
         }
 
+        if (DenarMoney.isMoney(item)) {
+            ItemCategory money = CategoryLoader.getMoneyCategory();
+            return money != null && playerData.isCategoryActive(money.getId());
+        }
+
         for (String activeId : playerData.getActiveCategories()) {
             ItemCategory category = CategoryLoader.getById(activeId);
             if (category == null) {
@@ -81,6 +89,9 @@ public final class CategoryHandler {
     public static ItemCategory resolveFirstMatch(ItemStack item) {
         if (item == null || item.getType().isAir()) {
             return null;
+        }
+        if (DenarMoney.isMoney(item)) {
+            return CategoryLoader.getMoneyCategory();
         }
         for (ItemCategory category : CategoryLoader.getAsList()) {
             if (matchesDirect(category, item)) {
@@ -103,6 +114,9 @@ public final class CategoryHandler {
     }
 
     public static double resolveItemWeight(ItemStack item) {
+        if (DenarMoney.isMoney(item)) {
+            return DenarMoney.stealPerItem(item);
+        }
         AcCraftRef crafted = resolveCraftedMatch(item);
         if (crafted != null) {
             return CategoryLoader.getWeightForCraftRef(crafted);
@@ -214,6 +228,13 @@ public final class CategoryHandler {
 
     public static List<String> buildDisplayLines(ItemCategory category) {
         List<String> lore = new ArrayList<>();
+        if (category.isMoneyType()) {
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.WHITE + "- Pouch and coins"));
+            lore.add(ThieveryTexts.formatGui(ThieveryTexts.MUTED + "  Steal value: "
+                    + ThieveryTexts.GUI_SUCCESS + StealItemDisplay.formatValue(category.getAmountPerMoney())
+                    + ThieveryTexts.MUTED + " per denar"));
+            return lore;
+        }
         for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
             String slug = entry.getSlug();
             if (CategorySlugs.isMaterialSlug(slug)) {

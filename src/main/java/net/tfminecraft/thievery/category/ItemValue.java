@@ -50,6 +50,9 @@ public final class ItemValue {
         if (ClueChecker.isClueItem(item)) {
             return 0;
         }
+        if (DenarMoney.isMoney(item)) {
+            return DenarMoney.stealPerItem(item);
+        }
         return categoryBase(item) + acAddon(item) + gemAddon(item);
     }
 

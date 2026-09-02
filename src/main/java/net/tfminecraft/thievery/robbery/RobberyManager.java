@@ -137,7 +137,7 @@ public class RobberyManager implements Listener {
         awaitingTarget.remove(robber.getUniqueId());
         endSessionForRobber(robber.getUniqueId(), false);
 
-        StealGui.Layout layout = StealGui.Layout.create(PlayerSlotMap.TOTAL_LOGICAL_SLOTS);
+        StealGui.Layout layout = StealGui.Layout.createRobbery(PlayerSlotMap.TOTAL_LOGICAL_SLOTS);
         StealBudget budget = new StealBudget(RobberyLoader.getBudget());
         RobberySession session = new RobberySession(robber.getUniqueId(), victim.getUniqueId(), budget, layout);
         session.setAcceptDeadlineMs(System.currentTimeMillis()

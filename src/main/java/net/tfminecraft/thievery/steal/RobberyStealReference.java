@@ -1,7 +1,6 @@
 package net.tfminecraft.thievery.steal;
 
 import java.util.Map;
-import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -11,21 +10,13 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import net.tfminecraft.thievery.Thievery;
+import net.tfminecraft.thievery.category.DenarMoney;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.robbery.RobberySession;
 import net.tfminecraft.thievery.robbery.RobberySession.State;
-import net.tfminecraft.thievery.steal.StealGuiHolder;
 import net.tfminecraft.thievery.loader.RobberyLoader;
 import net.tfminecraft.thievery.steal.session.StealSession;
-import net.tfminecraft.thievery.steal.PlayerSlotMap;
 import net.tfminecraft.thievery.steal.source.PlayerStealSource;
-import net.tfminecraft.thievery.steal.StealGui;
-import net.tfminecraft.thievery.steal.StealGui;
-import net.tfminecraft.thievery.steal.StealGui;
-import net.tfminecraft.thievery.steal.StealIgnoreRules;
-import net.tfminecraft.thievery.steal.StealItemDisplay;
-import net.tfminecraft.thievery.steal.source.StealSource;
-import net.tfminecraft.thievery.steal.StealTakeHandler;
 import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public class RobberyStealReference extends StealReference {
@@ -78,15 +69,39 @@ public class RobberyStealReference extends StealReference {
             return;
         }
 
-        ItemStack clickedItem = event.getCurrentItem();
-        int guiSlot = event.getSlot();
-        if (clickedItem == null || StealGui.isNonInteractivePane(clickedItem)
-                || StealItemDisplay.isStealPane(clickedItem)) {
+        ClickType click = event.getClick();
+        if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) {
             return;
         }
 
-        ClickType click = event.getClick();
-        if (click != ClickType.LEFT && click != ClickType.SHIFT_LEFT) {
+        ItemStack clickedItem = event.getCurrentItem();
+        int guiSlot = event.getSlot();
+        Inventory guiInv = event.getView().getTopInventory();
+
+        if (guiSlot == StealGui.ROBBERY_POUCH_GUI_SLOT && StealGui.isRobberyPouchPane(clickedItem)) {
+            Player victim = Bukkit.getPlayer(session.getVictimId());
+            if (victim == null || !victim.isOnline()) {
+                robber.sendMessage(ThieveryTexts.msg(ThieveryTexts.ERROR + "The victim is no longer available."));
+                onEnd.run();
+                return;
+            }
+            int requested = click == ClickType.SHIFT_LEFT
+                    ? RobberyLoader.getPouchShiftAmount()
+                    : RobberyLoader.getPouchClickAmount();
+            double take = Math.min(requested,
+                    Math.min(DenarMoney.getPouchBalance(victim),
+                            DenarMoney.maxStealableDenars(session.getBudget().getRemaining())));
+            if (take <= 0) {
+                return;
+            }
+            DenarMoney.transferPouch(victim, robber, take);
+            session.getBudget().addUsed(take * DenarMoney.amountPerMoney());
+            refreshGui(robber, victim, guiInv);
+            return;
+        }
+
+        if (clickedItem == null || StealGui.isNonInteractivePane(clickedItem)
+                || StealItemDisplay.isStealPane(clickedItem)) {
             return;
         }
 
@@ -102,7 +117,6 @@ public class RobberyStealReference extends StealReference {
             return;
         }
 
-        Inventory guiInv = event.getView().getTopInventory();
         PlayerStealSource source = new PlayerStealSource(victim);
         StealTakeHandler.performTake(robber, source, session.getBudget(), logicalSlot, guiInv, guiSlot, click,
                 clickedItem, () -> refreshGui(robber, victim, guiInv));
@@ -138,6 +152,7 @@ public class RobberyStealReference extends StealReference {
                 guiInv.setItem(guiSlot, display);
             }
         }
+        StealGui.placeRobberyPouchSlot(guiInv, victim, thiefData, session.getBudget());
         updateTitle(robber);
     }
 }

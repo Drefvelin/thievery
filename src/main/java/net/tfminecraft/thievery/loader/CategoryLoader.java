@@ -49,6 +49,23 @@ public class CategoryLoader implements LoaderInterface {
         return categories.get(id);
     }
 
+    public static ItemCategory getMoneyCategory() {
+        ItemCategory found = null;
+        for (ItemCategory category : categories.values()) {
+            if (!category.isMoneyType()) {
+                continue;
+            }
+            if (found != null) {
+                Thievery.getInstance().getLogger().warning(
+                        "[Thievery] Multiple money categories defined ('" + found.getId()
+                                + "' and '" + category.getId() + "'); using '" + found.getId() + "'");
+                return found;
+            }
+            found = category;
+        }
+        return found;
+    }
+
     public static double getDefaultWeight() {
         return Cache.defaultItemValue;
     }

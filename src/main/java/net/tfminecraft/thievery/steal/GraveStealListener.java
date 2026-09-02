@@ -93,6 +93,15 @@ public final class GraveStealListener implements Listener {
 				continue;
 			}
 
+			if (ItemValue.isBundle(realItem)) {
+				if (!ItemValue.hasStealableContents(thiefData, realItem, budget.getRemaining())
+						&& !CategoryHandler.canRevealItem(thiefData, realItem)) {
+					continue;
+				}
+			} else if (!CategoryHandler.canRevealItem(thiefData, realItem)) {
+				continue;
+			}
+
 			if (ItemValue.isBundle(realItem)
 					&& ItemValue.hasStealableContents(thiefData, realItem, budget.getRemaining())) {
 				ItemValue.BundleTakeResult result = ItemValue.takeFromBundle(

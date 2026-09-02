@@ -16,6 +16,8 @@ public final class RobberyLoader {
     private static int durationSeconds = 120;
     private static double maxDistance = 4;
     private static int acceptTimeoutSeconds = 30;
+    private static int pouchClickAmount = 10;
+    private static int pouchShiftAmount = 100;
     private static List<String> ignoreNameContains = new ArrayList<>();
 
     private RobberyLoader() {}
@@ -57,6 +59,14 @@ public final class RobberyLoader {
 
     public static int getAcceptTimeoutSeconds() {
         return acceptTimeoutSeconds;
+    }
+
+    public static int getPouchClickAmount() {
+        return pouchClickAmount;
+    }
+
+    public static int getPouchShiftAmount() {
+        return pouchShiftAmount;
     }
 
     public static List<String> getIgnoreNameContains() {
