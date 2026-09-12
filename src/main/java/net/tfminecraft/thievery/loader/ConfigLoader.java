@@ -32,7 +32,6 @@ public class ConfigLoader {
         RobberyLoader.load(config);
         PickpocketLoader.load(config);
         DoorLoader.load(config);
-        Cache.gravesBudget = config.getDouble("graves.budget", PickpocketLoader.getBudget());
 
         Cache.cooldown = config.getInt("cooldown", 3);
         Cache.radius = config.getInt("lockpick-range", config.getInt("radius", 4));

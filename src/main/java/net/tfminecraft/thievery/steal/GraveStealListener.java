@@ -23,7 +23,6 @@ import net.tfminecraft.RPCharacters.grave.Grave;
 import net.tfminecraft.RPCharacters.grave.GraveLootRules;
 import net.tfminecraft.RPCharacters.grave.GraveManager;
 import net.tfminecraft.thievery.Thievery;
-import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.category.CategoryHandler;
 import net.tfminecraft.thievery.category.ItemValue;
 import net.tfminecraft.thievery.player.PlayerData;
@@ -83,7 +82,6 @@ public final class GraveStealListener implements Listener {
 	private void loot(Player player, Grave grave) {
 		PlayerData thiefData = Thievery.getPlayerManager().get(player.getUniqueId());
 		GraveStealSource source = new GraveStealSource(grave);
-		StealBudget budget = new StealBudget(Cache.gravesBudget);
 		int stacksTaken = 0;
 		boolean inventoryFull = false;
 
@@ -94,7 +92,7 @@ public final class GraveStealListener implements Listener {
 			}
 
 			if (ItemValue.isBundle(realItem)) {
-				if (!ItemValue.hasStealableContents(thiefData, realItem, budget.getRemaining())
+				if (!ItemValue.hasStealableContents(thiefData, realItem, Double.POSITIVE_INFINITY)
 						&& !CategoryHandler.canRevealItem(thiefData, realItem)) {
 					continue;
 				}
@@ -103,9 +101,9 @@ public final class GraveStealListener implements Listener {
 			}
 
 			if (ItemValue.isBundle(realItem)
-					&& ItemValue.hasStealableContents(thiefData, realItem, budget.getRemaining())) {
+					&& ItemValue.hasStealableContents(thiefData, realItem, Double.POSITIVE_INFINITY)) {
 				ItemValue.BundleTakeResult result = ItemValue.takeFromBundle(
-						realItem, player, thiefData, budget.getRemaining(), ItemValue.BundleTakeMode.GREEDY);
+						realItem, player, thiefData, Double.POSITIVE_INFINITY, ItemValue.BundleTakeMode.GREEDY);
 				if (!result.isAnyTaken()) {
 					if (StealTakeHandler.maxFitInPlayerInventory(player, realItem, 1) < 1) {
 						inventoryFull = true;
@@ -118,12 +116,11 @@ public final class GraveStealListener implements Listener {
 				} else {
 					source.setItem(slot, result.getUpdatedBundle());
 				}
-				budget.addUsed(result.getValueTaken());
 				stacksTaken++;
 				continue;
 			}
 
-			int takeable = StealBudget.computeTakeableAmount(realItem, budget.getRemaining());
+			int takeable = realItem.getAmount();
 			if (takeable <= 0) {
 				continue;
 			}
@@ -132,7 +129,7 @@ public final class GraveStealListener implements Listener {
 				inventoryFull = true;
 				break;
 			}
-			int takeAmount = Math.min(realItem.getAmount(), Math.min(takeable, fit));
+			int takeAmount = Math.min(realItem.getAmount(), fit);
 			ItemStack toGive = realItem.clone();
 			toGive.setAmount(takeAmount);
 			if (!player.getInventory().addItem(toGive).isEmpty()) {
@@ -145,7 +142,6 @@ public final class GraveStealListener implements Listener {
 				realItem.setAmount(realItem.getAmount() - takeAmount);
 				source.setItem(slot, realItem);
 			}
-			budget.addUsed(CategoryHandler.getTotalValue(toGive));
 			stacksTaken++;
 		}
 

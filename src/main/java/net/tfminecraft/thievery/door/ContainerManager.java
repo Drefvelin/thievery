@@ -17,6 +17,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
@@ -402,6 +403,13 @@ public class ContainerManager implements Listener {
             return;
         }
 
+        if (wouldMergeWithUnownedSingleChest(block, event.getPlayer().getUniqueId())) {
+            event.setCancelled(true);
+            event.getPlayer().sendMessage(ThieveryTexts.msg(
+                    ThieveryTexts.ERROR + "You cannot connect this to a chest you do not own."));
+            return;
+        }
+
         Location location = block.getLocation();
         ContainerData data = new ContainerData(location, event.getPlayer().getUniqueId());
         containerDataManager.saveContainerData(data);
@@ -409,6 +417,30 @@ public class ContainerManager implements Listener {
         event.getPlayer().sendTitle(
                 ThieveryTexts.msg(ThieveryTexts.ACCENT + "Lock State"),
                 ThieveryTexts.msg(ThieveryTexts.WARN + displayState), 5, 30, 10);
+    }
+
+    private boolean wouldMergeWithUnownedSingleChest(Block placed, UUID placer) {
+        if (!(placed.getState() instanceof Chest)) {
+            return false;
+        }
+        Material type = placed.getType();
+        for (BlockFace face : new BlockFace[] { BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST }) {
+            Block neighbor = placed.getRelative(face);
+            if (neighbor.getType() != type) {
+                continue;
+            }
+            if (!(neighbor.getState() instanceof Chest chest)) {
+                continue;
+            }
+            if (chest.getInventory() instanceof DoubleChestInventory) {
+                continue;
+            }
+            ContainerData neighborData = containerDataManager.loadContainerData(neighbor.getLocation());
+            if (!ChestMergeRules.personallyOwns(placer, neighborData.getOwner())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @EventHandler

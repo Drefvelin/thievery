@@ -135,9 +135,6 @@ robbery:
     name-contains:
       - Slot
 
-graves:
-  budget: 10
-
 pickpocket:
   traits:
     - thief
