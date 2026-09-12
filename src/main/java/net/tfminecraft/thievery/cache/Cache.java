@@ -1,9 +1,7 @@
 package net.tfminecraft.thievery.cache;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Cache {
     public static int cooldown;
@@ -17,8 +15,6 @@ public class Cache {
     public static int pointGainIntervalHours = 24;
 
     public static double defaultItemValue = 0.1;
-
-    public static final Map<Integer, Double> tierValues = new HashMap<>();
 
     public static int recentClueMax = 6;
     public static int recentClueCooldownHours = 72;

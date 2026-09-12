@@ -53,12 +53,6 @@ point_gain_interval: 24
 
 default_item_value: 0.1
 
-tier-values:
-  1: 1.0
-  2: 2.0
-  3: 4.0
-  4: 8.0
-
 clues:
   recent-max: 6
   recent-cooldown-hours: 72

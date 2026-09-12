@@ -53,85 +53,79 @@ public final class ItemValue {
         if (DenarMoney.isMoney(item)) {
             return DenarMoney.stealPerItem(item);
         }
-        return categoryBase(item) + acAddon(item) + gemAddon(item);
+        double gems = gemAddon(item);
+        if (ThieveryBridge.isPluginReady()) {
+            CraftProvenance provenance = ThieveryBridge.readProvenance(item);
+            if (provenance != null) {
+                return compositionForProvenance(provenance) + qualityValue(provenance) + gems;
+            }
+            Alloy alloy = ThieveryBridge.resolveAlloy(item);
+            if (alloy != null) {
+                return compositionForAlloy(alloy) + gems;
+            }
+        }
+        return categoryBase(item) + gems;
     }
 
-    public static double computeIngredientExampleValue(Ingredient ingredient, double categoryBase) {
+    public static double categoryWeightForIngredient(Ingredient ingredient) {
         if (ingredient == null) {
-            return categoryBase;
+            return Cache.defaultItemValue;
         }
-        double addon = ingredient.getIngredientData().getValue();
-        if (ingredient.getIngredientData().hasTier()) {
-            addon += tierBonus(ingredient.getIngredientData().getTier());
+        String path = ingredient.getPath();
+        if (path == null || path.isBlank()) {
+            return Cache.defaultItemValue;
         }
-        return categoryBase + addon;
+        ItemStack preview = TLibs.getItemAPI().getCreator().getItemFromPath(path);
+        if (preview == null) {
+            return Cache.defaultItemValue;
+        }
+        return CategoryHandler.resolveItemWeight(preview);
     }
 
-    public static double tierBonus(int tier) {
-        if (tier <= 0) {
-            return 0;
+    public static boolean usesCompositionValue(ItemStack item) {
+        if (!ThieveryBridge.isPluginReady() || item == null || item.getType().isAir()) {
+            return false;
         }
-        return Cache.tierValues.getOrDefault(tier, 0.0);
+        return ThieveryBridge.readProvenance(item) != null
+                || ThieveryBridge.resolveAlloy(item) != null;
     }
 
     private static double categoryBase(ItemStack item) {
         return CategoryHandler.resolveItemWeight(item);
     }
 
-    private static double acAddon(ItemStack item) {
-        if (!ThieveryBridge.isPluginReady()) {
+    public static double compositionForAlloy(Alloy alloy) {
+        if (alloy == null || alloy.getData() == null) {
             return 0;
         }
-
-        CraftProvenance provenance = ThieveryBridge.readProvenance(item);
-        if (provenance != null) {
-            return craftedAddon(provenance);
+        AlloyRecipe recipe = alloy.getData().getRecipe();
+        if (recipe == null) {
+            return 0;
         }
-
-        Alloy alloy = ThieveryBridge.resolveAlloy(item);
-        if (alloy != null) {
-            return alloyAddon(alloy);
+        double total = 0;
+        Ingredient base = ThieveryBridge.getIngredientById(recipe.getBaseId());
+        if (base != null) {
+            total += categoryWeightForIngredient(base);
         }
-
-        Ingredient ingredient = ThieveryBridge.resolveIngredient(item);
-        if (ingredient != null) {
-            return ingredientAddon(ingredient);
-        }
-
-        return 0;
-    }
-
-    private static double ingredientAddon(Ingredient ingredient) {
-        double total = ingredient.getIngredientData().getValue();
-        if (ingredient.getIngredientData().hasTier()) {
-            total += tierBonus(ingredient.getIngredientData().getTier());
+        for (String catalystId : recipe.getCatalystIds()) {
+            Ingredient catalyst = ThieveryBridge.getIngredientById(catalystId);
+            if (catalyst != null) {
+                total += categoryWeightForIngredient(catalyst);
+            }
         }
         return total;
     }
 
-    private static double alloyAddon(Alloy alloy) {
-        double total = ThieveryBridge.sumAlloyIngredientValues(alloy);
-        if (alloy.getData() != null && alloy.getData().getTier() > 0) {
-            total += tierBonus(alloy.getData().getTier());
+    public static double compositionForProvenance(CraftProvenance provenance) {
+        if (provenance == null) {
+            return 0;
         }
-        return total;
+        return sumProvenanceInputs(provenance.getInputs());
     }
 
-    private static double craftedAddon(CraftProvenance provenance) {
-        double total = sumProvenanceInputs(provenance.getInputs());
-
+    private static double qualityValue(CraftProvenance provenance) {
         Quality quality = ThieveryBridge.getQualityById(provenance.getQualityId());
-        if (quality != null) {
-            total += quality.getValue();
-        }
-
-        CraftingRecipe recipe = ThieveryBridge.getRecipeById(provenance.getRecipeId());
-        if (recipe != null) {
-            int majorityTier = ThieveryBridge.resolveMajorityTier(recipe, provenance.getInputs());
-            total += tierBonus(majorityTier);
-        }
-
-        return total;
+        return quality != null ? quality.getValue() : 0;
     }
 
     private static double sumProvenanceInputs(List<CraftInput> inputs) {
@@ -144,12 +138,12 @@ public final class ItemValue {
             if (kind.equals("ingredient")) {
                 Ingredient ing = ThieveryBridge.getIngredientById(input.getId());
                 if (ing != null) {
-                    total += ing.getIngredientData().getValue() * input.getAmount();
+                    total += categoryWeightForIngredient(ing) * input.getAmount();
                 }
             } else if (kind.equals("alloy")) {
-                Alloy alloy = net.tfminecraft.AdvancedCrafting.Managers.AlloyManager.getAlloyById(input.getId());
+                Alloy alloy = AlloyManager.getAlloyById(input.getId());
                 if (alloy != null) {
-                    total += alloyAddon(alloy) * input.getAmount();
+                    total += compositionForAlloy(alloy) * input.getAmount();
                 }
             }
         }
@@ -689,10 +683,10 @@ public final class ItemValue {
         lines.add(ThieveryTexts.formatDisplay(DIVIDER));
 
         double categoryBase = appendCategorySection(lines, item);
-        double acAddon = appendAcSection(lines, item);
+        double composition = appendCompositionSection(lines, item);
         double gemAddon = appendGemSection(lines, item);
 
-        double perItem = categoryBase + acAddon + gemAddon;
+        double perItem = categoryBase + composition + gemAddon;
         double computed = ItemValue.compute(item);
         if (Math.abs(perItem - computed) > 0.001) {
             perItem = computed;
@@ -767,15 +761,22 @@ public final class ItemValue {
     private static double appendCategorySection(List<String> lines, ItemStack item) {
         ItemCategory category = CategoryHandler.resolveCategory(item);
         AcCraftRef crafted = CategoryHandler.resolveCraftedMatch(item);
-        double base = CategoryHandler.resolveItemWeight(item);
+        boolean compositionOnly = usesCompositionValue(item);
+        double base = compositionOnly ? 0 : CategoryHandler.resolveItemWeight(item);
 
         if (category == null && crafted == null) {
+            if (compositionOnly) {
+                lines.add(sectionTitle("Category match", 0));
+                lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED
+                        + "  Slug weight ignored - value is composition below"));
+                return 0;
+            }
             lines.add(sectionTitle("Category base", Cache.defaultItemValue));
             lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  No category match - using default_item_value"));
             return Cache.defaultItemValue;
         }
 
-        lines.add(sectionTitle("Category base", base));
+        lines.add(sectionTitle(compositionOnly ? "Category match" : "Category base", base));
         if (category != null) {
             lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Category: " + ThieveryTexts.INFO + category.getId()));
         }
@@ -784,13 +785,14 @@ public final class ItemValue {
                     + crafted.getRawId() + ThieveryTexts.MUTED + " ("
                     + crafted.getStatTemplate() + " tier " + crafted.getTier() + ")"));
         }
-        if (base == 0) {
-            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Value comes from composition below"));
+        if (compositionOnly) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED
+                    + "  Slug weight ignored - value is composition below"));
         }
         return base;
     }
 
-    private static double appendAcSection(List<String> lines, ItemStack item) {
+    private static double appendCompositionSection(List<String> lines, ItemStack item) {
         if (!ThieveryBridge.isPluginReady()) {
             return 0;
         }
@@ -805,38 +807,13 @@ public final class ItemValue {
             return appendAlloyAc(lines, alloy);
         }
 
-        Ingredient ingredient = ThieveryBridge.resolveIngredient(item);
-        if (ingredient != null) {
-            return appendIngredientAc(lines, ingredient);
-        }
-
         return 0;
-    }
-
-    private static double appendIngredientAc(List<String> lines, Ingredient ingredient) {
-        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
-        int matValue = ingredient.getIngredientData().getValue();
-        int tier = ingredient.getIngredientData().hasTier() ? ingredient.getIngredientData().getTier() : 0;
-        double tierBonus = ItemValue.tierBonus(tier);
-        double total = matValue + tierBonus;
-
-        lines.add(sectionTitle("Material", total));
-        lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Ingredient: " + ThieveryTexts.WHITE + ingredient.getId()
-                + ThieveryTexts.MUTED + " (" + ingredient.getIngredientData().getType().getId() + ")"));
-        lines.add(valueLine("  Material value", matValue));
-        if (tier > 0) {
-            lines.add(valueLine("  Tier " + toRoman(tier) + " bonus", tierBonus));
-        }
-        return total;
     }
 
     private static double appendAlloyAc(List<String> lines, Alloy alloy) {
         lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         AlloyRecipe recipe = alloy.getData() != null ? alloy.getData().getRecipe() : null;
-        int forgeSum = ThieveryBridge.sumForgeInputValues(recipe);
-        int tier = alloy.getData() != null ? alloy.getData().getTier() : 0;
-        double tierBonus = ItemValue.tierBonus(tier);
-        double total = forgeSum + tierBonus;
+        double total = compositionForAlloy(alloy);
 
         lines.add(sectionTitle("Alloy", total));
         lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Alloy: " + ThieveryTexts.WHITE + alloy.getId()));
@@ -845,19 +822,16 @@ public final class ItemValue {
             if (base != null) {
                 lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Base " + ThieveryTexts.WHITE
                         + recipe.getBaseId() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
-                        + StealItemDisplay.formatValue(base.getIngredientData().getValue())));
+                        + StealItemDisplay.formatValue(categoryWeightForIngredient(base))));
             }
             for (String catalystId : recipe.getCatalystIds()) {
                 Ingredient catalyst = ThieveryBridge.getIngredientById(catalystId);
                 if (catalyst != null) {
                     lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Catalyst " + ThieveryTexts.WHITE
                             + catalystId + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
-                            + StealItemDisplay.formatValue(catalyst.getIngredientData().getValue())));
+                            + StealItemDisplay.formatValue(categoryWeightForIngredient(catalyst))));
                 }
             }
-        }
-        if (tier > 0) {
-            lines.add(valueLine("  Tier " + toRoman(tier) + " bonus", tierBonus));
         }
         return total;
     }
@@ -877,7 +851,7 @@ public final class ItemValue {
             if (kind.equals("ingredient")) {
                 Ingredient ing = ThieveryBridge.getIngredientById(input.getId());
                 if (ing != null) {
-                    double part = ing.getIngredientData().getValue() * input.getAmount();
+                    double part = categoryWeightForIngredient(ing) * input.getAmount();
                     materials += part;
                     details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • " + ThieveryTexts.WHITE
                             + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
@@ -886,11 +860,7 @@ public final class ItemValue {
             } else if (kind.equals("alloy")) {
                 Alloy alloy = AlloyManager.getAlloyById(input.getId());
                 if (alloy != null) {
-                    double perAlloy = ThieveryBridge.sumAlloyIngredientValues(alloy);
-                    if (alloy.getData() != null && alloy.getData().getTier() > 0) {
-                        perAlloy += ItemValue.tierBonus(alloy.getData().getTier());
-                    }
-                    double part = perAlloy * input.getAmount();
+                    double part = compositionForAlloy(alloy) * input.getAmount();
                     materials += part;
                     details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  • Alloy " + ThieveryTexts.WHITE
                             + input.getId() + " ×" + input.getAmount() + ThieveryTexts.MUTED + "  →  "
@@ -899,27 +869,15 @@ public final class ItemValue {
             }
         }
 
-        double qualityBonus = 0;
-        Quality quality = ThieveryBridge.getQualityById(provenance.getQualityId());
-        if (quality != null) {
-            qualityBonus = quality.getValue();
+        double quality = qualityValue(provenance);
+        Quality qualityDef = ThieveryBridge.getQualityById(provenance.getQualityId());
+        if (qualityDef != null) {
             details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Quality: " + ThieveryTexts.WHITE
-                    + quality.getName() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
-                    + StealItemDisplay.formatValue(qualityBonus)));
+                    + qualityDef.getName() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
+                    + StealItemDisplay.formatValue(quality)));
         }
 
-        double tierBonus = 0;
-        if (recipe != null) {
-            int majorityTier = ThieveryBridge.resolveMajorityTier(recipe, provenance.getInputs());
-            tierBonus = ItemValue.tierBonus(majorityTier);
-            if (majorityTier > 0) {
-                details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Majority tier " + ThieveryTexts.WHITE
-                        + toRoman(majorityTier) + ThieveryTexts.MUTED + " bonus  →  " + ThieveryTexts.ACCENT
-                        + StealItemDisplay.formatValue(tierBonus)));
-            }
-        }
-
-        double total = materials + qualityBonus + tierBonus;
+        double total = materials + quality;
         lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(sectionTitle("Crafted", total));
         lines.addAll(details);
@@ -1017,16 +975,6 @@ public final class ItemValue {
         String weight = bold ? "§l" : "";
         return ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + label + ": " + weight + ThieveryTexts.ACCENT
                 + StealItemDisplay.formatValue(value));
-    }
-
-    private static String toRoman(int tier) {
-        return switch (tier) {
-            case 1 -> "I";
-            case 2 -> "II";
-            case 3 -> "III";
-            case 4 -> "IV";
-            default -> String.valueOf(tier);
-        };
     }
 
     private static String repeat(char c, int count) {

@@ -271,24 +271,23 @@ public final class CategoryHandler {
                 continue;
             }
             String itemName = resolveIngredientName(ingredient);
-            double example = ItemValue.computeIngredientExampleValue(ingredient, categoryBase);
-            lore.add(formatLine(itemName, example));
+            lore.add(formatLine(itemName, ItemValue.categoryWeightForIngredient(ingredient)));
         }
 
         if (ThieveryBridge.hasBaseIngredientForType(wantedType, wantedTier)) {
             String typeName = type != null ? type.getName() : wantedType;
             String label = "Tier " + toRoman(wantedTier) + " " + typeName + " Alloys";
-            lore.add(formatLine(label, estimateAlloyExampleValue(wantedType, wantedTier, categoryBase)));
+            lore.add(formatLine(label, estimateAlloyExampleValue(wantedType, wantedTier)));
         }
         return lore;
     }
 
-    private static double estimateAlloyExampleValue(String typeId, int tier, double categoryBase) {
+    private static double estimateAlloyExampleValue(String typeId, int tier) {
         Ingredient base = findBaseIngredient(typeId, tier);
         if (base == null) {
-            return categoryBase + ItemValue.tierBonus(tier);
+            return 0;
         }
-        return categoryBase + base.getIngredientData().getValue() + ItemValue.tierBonus(tier);
+        return ItemValue.categoryWeightForIngredient(base);
     }
 
     private static Ingredient findBaseIngredient(String typeId, int tier) {
@@ -318,26 +317,26 @@ public final class CategoryHandler {
         String displayName = template != null ? template.getName() : formatId(ref.getStatTemplate());
 
         CraftingRecipe recipe = ThieveryBridge.findRecipeByStatTemplate(ref.getStatTemplate());
-        double example = categoryBase;
+        double example = 0;
         if (recipe != null) {
-            example = estimateCraftValue(recipe, ref.getTier(), categoryBase);
+            example = estimateCraftValue(recipe, ref.getTier());
         }
 
         lore.add(formatLine(displayName, example));
         return lore;
     }
 
-    private static double estimateCraftValue(CraftingRecipe recipe, int tier, double categoryBase) {
+    private static double estimateCraftValue(CraftingRecipe recipe, int tier) {
         double materialValue = 0;
         for (var entry : recipe.getRecipe().entrySet()) {
             String typeId = entry.getKey();
             int amount = entry.getValue();
             Ingredient reference = findReferenceIngredient(typeId, tier);
             if (reference != null) {
-                materialValue += ItemValue.computeIngredientExampleValue(reference, 0) * amount;
+                materialValue += ItemValue.categoryWeightForIngredient(reference) * amount;
             }
         }
-        return categoryBase + materialValue + ItemValue.tierBonus(tier) + 2;
+        return materialValue;
     }
 
     private static Ingredient findReferenceIngredient(String typeId, int tier) {

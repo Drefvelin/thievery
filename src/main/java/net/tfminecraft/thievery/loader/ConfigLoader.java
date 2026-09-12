@@ -41,22 +41,6 @@ public class ConfigLoader {
         Cache.defaultItemValue = config.getDouble("default_item_value",
                 config.getDouble("default_value", 0.1));
 
-        Cache.tierValues.clear();
-        if (config.isConfigurationSection("tier-values")) {
-            for (String key : config.getConfigurationSection("tier-values").getKeys(false)) {
-                try {
-                    int tier = Integer.parseInt(key);
-                    Cache.tierValues.put(tier, config.getDouble("tier-values." + key));
-                } catch (NumberFormatException ignored) {
-                }
-            }
-        } else {
-            Cache.tierValues.put(1, 1.0);
-            Cache.tierValues.put(2, 2.0);
-            Cache.tierValues.put(3, 4.0);
-            Cache.tierValues.put(4, 8.0);
-        }
-
         if (config.contains("traits")) Cache.traits = config.getStringList("traits");
 
         Cache.recentClueMax = config.getInt("clues.recent-max", 6);
