@@ -12,6 +12,10 @@ See [IMPLEMENTATION_BATCHES.md](IMPLEMENTATION_BATCHES.md) for the build order. 
 | Chests / barrels / etc. | Owner + `LockState` | Hidden **GUI** probe | Access-map cooldown |
 | IF furniture, armor stands, item frames | Owner + `LockState` (chest model) | Same **bar** as doors | Same 60s as doors (`fail-cooldown-ms`) |
 
+## Chest hopper automation
+
+When a **block hopper** moves items (`InventoryMoveItemEvent`), allow pull/deposit only if the hopper and every involved block container (chest, barrel, hopper, etc.) share the same **non-null owner UUID**. Guild/PUBLIC player access does not apply to hoppers — only owner equality. Unowned containers block automation; hopper minecarts are not covered. Droppers and other initiators are unchanged.
+
 Do not put displays on the chest GUI. Do not copy `LockPickManager` into a second bar. Doors and displays share one engine.
 
 ## Bar engine

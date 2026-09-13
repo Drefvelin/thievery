@@ -2,6 +2,7 @@ package net.tfminecraft.thievery.category;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,6 +17,8 @@ import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.Ingredient;
 import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.IngredientType;
 import net.tfminecraft.AdvancedCrafting.Objects.Stats.StatTemplate;
 import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
+import net.tfminecraft.thievery.category.CategorySlugs.SlugSpecificity;
+import net.tfminecraft.thievery.category.ItemCategory.CategoryItemEntry;
 import net.tfminecraft.thievery.player.PlayerData;
 import net.tfminecraft.thievery.loader.CategoryLoader;
 import net.tfminecraft.thievery.steal.StealItemDisplay;
@@ -23,6 +26,13 @@ import net.tfminecraft.thievery.clue.ClueChecker;
 import net.tfminecraft.thievery.utils.ThieveryTexts;
 
 public final class CategoryHandler {
+
+    public record ResolvedEntry(
+            ItemCategory category,
+            CategoryItemEntry entry,
+            SlugSpecificity specificity,
+            int yamlOrder) {
+    }
 
     private CategoryHandler() {
     }
@@ -50,14 +60,33 @@ public final class CategoryHandler {
     }
 
     public static boolean matchesCraftInCategory(ItemCategory category, ItemStack item) {
+        if (category == null || item == null || item.getType().isAir()) {
+            return false;
+        }
         AcCraftRef crafted = resolveCraftedMatch(item);
-        if (crafted == null || category == null) {
+        GgCraftRef gg = resolveGgMatch(item);
+        MagicCraftRef magic = resolveMagicMatch(item);
+        if (crafted == null && gg == null && magic == null) {
             return false;
         }
         for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
-            var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
-            if (parsed.isPresent() && parsed.get().equals(crafted)) {
-                return true;
+            if (crafted != null) {
+                var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
+                if (parsed.isPresent() && parsed.get().equals(crafted)) {
+                    return true;
+                }
+            }
+            if (gg != null) {
+                var parsedGg = CategorySlugs.parseGgCraftRef(entry.getSlug());
+                if (parsedGg.isPresent() && parsedGg.get().equals(gg)) {
+                    return true;
+                }
+            }
+            if (magic != null) {
+                var parsedMagic = CategorySlugs.parseMagicCraftRef(entry.getSlug());
+                if (parsedMagic.isPresent() && parsedMagic.get().equals(magic)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -83,34 +112,116 @@ public final class CategoryHandler {
             }
         }
 
-        return resolveFirstMatch(item) == null && resolveCraftedMatch(item) == null;
+        return resolveFirstMatch(item) == null && resolveCraftedMatch(item) == null
+                && resolveGgMatch(item) == null && resolveMagicMatch(item) == null;
     }
 
     public static ItemCategory resolveFirstMatch(ItemStack item) {
+        return resolveBestDirectEntry(item).map(ResolvedEntry::category).orElse(null);
+    }
+
+    public static Optional<ResolvedEntry> resolveBestDirectEntry(ItemStack item) {
         if (item == null || item.getType().isAir()) {
-            return null;
+            return Optional.empty();
         }
         if (DenarMoney.isMoney(item)) {
-            return CategoryLoader.getMoneyCategory();
+            ItemCategory money = CategoryLoader.getMoneyCategory();
+            if (money == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new ResolvedEntry(money, null, SlugSpecificity.EXACT_PATH, 0));
         }
+
+        String itemPath = pathOf(item);
+        ResolvedEntry best = null;
+        int order = 0;
         for (ItemCategory category : CategoryLoader.getAsList()) {
-            if (matchesDirect(category, item)) {
-                return category;
+            for (CategoryItemEntry entry : category.getItems()) {
+                if (!matchesDirectSlug(entry.getSlug(), item)) {
+                    continue;
+                }
+                Optional<SlugSpecificity> specificity = CategorySlugs.resolve(entry.getSlug(), item, itemPath);
+                if (specificity.isEmpty()) {
+                    continue;
+                }
+                ResolvedEntry candidate = new ResolvedEntry(category, entry, specificity.get(), order++);
+                if (best == null || candidate.specificity().getRank() > best.specificity().getRank()) {
+                    best = candidate;
+                }
             }
         }
-        return null;
+        return Optional.ofNullable(best);
+    }
+
+    public static Optional<ResolvedEntry> resolveBestCraftEntry(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return Optional.empty();
+        }
+        AcCraftRef crafted = resolveCraftedMatch(item);
+        GgCraftRef gg = resolveGgMatch(item);
+        MagicCraftRef magic = resolveMagicMatch(item);
+        if (crafted == null && gg == null && magic == null) {
+            return Optional.empty();
+        }
+
+        ResolvedEntry best = null;
+        int order = 0;
+        for (ItemCategory category : CategoryLoader.getAsList()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                boolean matches = false;
+                if (crafted != null) {
+                    var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
+                    if (parsed.isPresent() && parsed.get().equals(crafted)) {
+                        matches = true;
+                    }
+                }
+                if (!matches && gg != null) {
+                    var parsedGg = CategorySlugs.parseGgCraftRef(entry.getSlug());
+                    if (parsedGg.isPresent() && parsedGg.get().equals(gg)) {
+                        matches = true;
+                    }
+                }
+                if (!matches && magic != null) {
+                    var parsedMagic = CategorySlugs.parseMagicCraftRef(entry.getSlug());
+                    if (parsedMagic.isPresent() && parsedMagic.get().equals(magic)) {
+                        matches = true;
+                    }
+                }
+                if (!matches) {
+                    continue;
+                }
+                ResolvedEntry candidate = new ResolvedEntry(
+                        category, entry, SlugSpecificity.CRAFT_REF, order++);
+                if (best == null || candidate.yamlOrder() < best.yamlOrder()) {
+                    best = candidate;
+                }
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    public static Optional<ResolvedEntry> resolveBestEntry(ItemStack item) {
+        Optional<ResolvedEntry> direct = resolveBestDirectEntry(item);
+        Optional<ResolvedEntry> craft = resolveBestCraftEntry(item);
+        if (direct.isEmpty()) {
+            return craft;
+        }
+        if (craft.isEmpty()) {
+            return direct;
+        }
+        ResolvedEntry directEntry = direct.get();
+        ResolvedEntry craftEntry = craft.get();
+        if (directEntry.specificity().getRank() > craftEntry.specificity().getRank()) {
+            return direct;
+        }
+        if (craftEntry.specificity().getRank() > directEntry.specificity().getRank()) {
+            return craft;
+        }
+        return directEntry.yamlOrder() <= craftEntry.yamlOrder() ? direct : craft;
     }
 
     public static ItemCategory resolveCraftCategory(ItemStack item) {
-        if (item == null || item.getType().isAir()) {
-            return null;
-        }
-        for (ItemCategory category : CategoryLoader.getAsList()) {
-            if (matchesCraftInCategory(category, item)) {
-                return category;
-            }
-        }
-        return null;
+        return resolveBestCraftEntry(item).map(ResolvedEntry::category).orElse(null);
     }
 
     public static double resolveItemWeight(ItemStack item) {
@@ -121,16 +232,40 @@ public final class CategoryHandler {
         if (crafted != null) {
             return CategoryLoader.getWeightForCraftRef(crafted);
         }
-        ItemCategory category = resolveFirstMatch(item);
-        if (category == null) {
+        GgCraftRef gg = resolveGgMatch(item);
+        if (gg != null) {
+            return CategoryLoader.getWeightForGgRef(gg);
+        }
+        MagicCraftRef magic = resolveMagicMatch(item);
+        if (magic != null) {
+            return CategoryLoader.getWeightForMagicRef(magic);
+        }
+        Optional<ResolvedEntry> best = resolveBestDirectEntry(item);
+        if (best.isEmpty()) {
             return CategoryLoader.getDefaultWeight();
         }
-        for (ItemCategory.CategoryItemEntry entry : category.getItems()) {
-            if (matchesDirectSlug(entry.getSlug(), item)) {
-                return entry.getWeight();
-            }
+        ResolvedEntry resolved = best.get();
+        if (resolved.entry() != null) {
+            return resolved.entry().getWeight();
         }
-        return category.getValue();
+        return resolved.category().getValue();
+    }
+
+    public static double weightForResolvedEntry(ResolvedEntry resolved) {
+        if (resolved == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        if (resolved.entry() != null) {
+            return resolved.entry().getWeight();
+        }
+        return resolved.category().getValue();
+    }
+
+    public static String pathOf(ItemStack item) {
+        if (item == null || item.getType().isAir()) {
+            return "";
+        }
+        return TLibs.getItemAPI().getChecker().getAsStringPath(item);
     }
 
     public static AcCraftRef resolveCraftedMatch(ItemStack item) {
@@ -148,6 +283,14 @@ public final class CategoryHandler {
         int tier = ThieveryBridge.resolveMajorityTier(recipe, provenance.getInputs());
         String templateId = recipe.getStatTemplateId();
         return AcCraftRef.parse("ac_" + templateId + "_tier_" + tier).orElse(null);
+    }
+
+    public static GgCraftRef resolveGgMatch(ItemStack item) {
+        return GgCraftRef.fromItem(item).orElse(null);
+    }
+
+    public static MagicCraftRef resolveMagicMatch(ItemStack item) {
+        return MagicCraftRef.fromItem(item).orElse(null);
     }
 
     public static boolean matchesDirectSlug(String slug, ItemStack item) {
@@ -186,8 +329,65 @@ public final class CategoryHandler {
     }
 
     public static ItemCategory resolveCategory(ItemStack item) {
-        ItemCategory direct = resolveFirstMatch(item);
-        return direct != null ? direct : resolveCraftCategory(item);
+        return resolveBestEntry(item).map(ResolvedEntry::category).orElse(null);
+    }
+
+    public static double getWeightForGgRef(GgCraftRef ref) {
+        if (ref == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        for (ItemCategory category : CategoryLoader.getAsList()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                var parsed = CategorySlugs.parseGgCraftRef(entry.getSlug());
+                if (parsed.isPresent() && parsed.get().equals(ref)) {
+                    return entry.getWeight();
+                }
+            }
+        }
+        return CategoryLoader.getDefaultWeight();
+    }
+
+    public static double getWeightForMagicRef(MagicCraftRef ref) {
+        if (ref == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        for (ItemCategory category : CategoryLoader.getAsList()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                var parsed = CategorySlugs.parseMagicCraftRef(entry.getSlug());
+                if (parsed.isPresent() && parsed.get().equals(ref)) {
+                    return entry.getWeight();
+                }
+            }
+        }
+        return CategoryLoader.getDefaultWeight();
+    }
+
+    public static double getWeightForCraftRef(AcCraftRef ref) {
+        if (ref == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        for (ItemCategory category : CategoryLoader.getAsList()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
+                if (parsed.isPresent() && parsed.get().equals(ref)) {
+                    return entry.getWeight();
+                }
+            }
+        }
+        return CategoryLoader.getDefaultWeight();
+    }
+
+    public static double getWeightForPath(String path) {
+        if (path == null || path.isBlank()) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        ItemStack probe = TLibs.getItemAPI().getCreator().getItemFromPath(path);
+        if (probe == null) {
+            return CategoryLoader.getDefaultWeight();
+        }
+        return resolveBestDirectEntry(probe)
+                .map(CategoryHandler::weightForResolvedEntry)
+                .orElse(CategoryLoader.getDefaultWeight());
     }
 
     public static boolean canRevealItem(PlayerData playerData, ItemStack item) {
@@ -239,6 +439,12 @@ public final class CategoryHandler {
             String slug = entry.getSlug();
             if (CategorySlugs.isMaterialSlug(slug)) {
                 lore.addAll(buildMaterialSlugLines(slug, entry.getWeight()));
+            } else if (CategorySlugs.isGgSlug(slug)) {
+                CategorySlugs.parseGgCraftRef(slug).ifPresent(ref ->
+                        lore.add(formatLine(ref.getDisplayName(), entry.getWeight())));
+            } else if (CategorySlugs.isMagicSlug(slug)) {
+                CategorySlugs.parseMagicCraftRef(slug).ifPresent(ref ->
+                        lore.add(formatLine(ref.getDisplayName(), entry.getWeight())));
             } else if (CategorySlugs.isCraftSlug(slug)) {
                 CategorySlugs.parseCraftRef(slug).ifPresent(ref ->
                         lore.addAll(buildAcCraftRefLines(ref, entry.getWeight())));

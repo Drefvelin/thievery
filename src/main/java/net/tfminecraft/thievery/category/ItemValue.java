@@ -54,10 +54,16 @@ public final class ItemValue {
             return DenarMoney.stealPerItem(item);
         }
         double gems = gemAddon(item);
+        if (MagicCraftRef.fromItem(item).isPresent()) {
+            double base = categoryBase(item);
+            int band = MagicCraftRef.highestAuraBand(item);
+            return applyPercent(base, Cache.auraPercent(band)) + gems;
+        }
         if (ThieveryBridge.isPluginReady()) {
             CraftProvenance provenance = ThieveryBridge.readProvenance(item);
             if (provenance != null) {
-                return compositionForProvenance(provenance) + qualityValue(provenance) + gems;
+                double materials = compositionForProvenance(provenance);
+                return applyPercent(materials, Cache.qualityPercent(provenance.getQualityId())) + gems;
             }
             Alloy alloy = ThieveryBridge.resolveAlloy(item);
             if (alloy != null) {
@@ -84,6 +90,9 @@ public final class ItemValue {
 
     public static boolean usesCompositionValue(ItemStack item) {
         if (!ThieveryBridge.isPluginReady() || item == null || item.getType().isAir()) {
+            return false;
+        }
+        if (MagicCraftRef.fromItem(item).isPresent()) {
             return false;
         }
         return ThieveryBridge.readProvenance(item) != null
@@ -123,9 +132,27 @@ public final class ItemValue {
         return sumProvenanceInputs(provenance.getInputs());
     }
 
-    private static double qualityValue(CraftProvenance provenance) {
-        Quality quality = ThieveryBridge.getQualityById(provenance.getQualityId());
-        return quality != null ? quality.getValue() : 0;
+    private static double applyPercent(double base, double percent) {
+        return base * (1.0 + percent);
+    }
+
+    private static String formatPercent(double percent) {
+        double shown = percent * 100.0;
+        String sign = shown > 0 ? "+" : "";
+        if (Math.abs(shown - Math.round(shown)) < 0.05) {
+            return sign + (int) Math.round(shown) + "%";
+        }
+        return sign + String.format(java.util.Locale.ROOT, "%.1f", shown) + "%";
+    }
+
+    private static String auraNumeral(int band) {
+        return switch (band) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            default -> "-";
+        };
     }
 
     private static double sumProvenanceInputs(List<CraftInput> inputs) {
@@ -684,9 +711,10 @@ public final class ItemValue {
 
         double categoryBase = appendCategorySection(lines, item);
         double composition = appendCompositionSection(lines, item);
+        double aura = appendAuraSection(lines, item, categoryBase);
         double gemAddon = appendGemSection(lines, item);
 
-        double perItem = categoryBase + composition + gemAddon;
+        double perItem = categoryBase + composition + aura + gemAddon;
         double computed = ItemValue.compute(item);
         if (Math.abs(perItem - computed) > 0.001) {
             perItem = computed;
@@ -743,10 +771,17 @@ public final class ItemValue {
     }
 
     private static void appendMatchingCategories(List<String> lines, ItemStack item) {
+        String primaryId = CategoryHandler.resolveBestEntry(item)
+                .map(resolved -> resolved.category().getId())
+                .orElse(null);
         List<String> matches = new ArrayList<>();
         for (ItemCategory category : CategoryLoader.getAsList()) {
             if (CategoryHandler.matches(category, item)) {
-                matches.add(category.getId());
+                String id = category.getId();
+                if (id.equals(primaryId)) {
+                    id = id + " (primary)";
+                }
+                matches.add(id);
             }
         }
         if (matches.isEmpty()) {
@@ -761,10 +796,12 @@ public final class ItemValue {
     private static double appendCategorySection(List<String> lines, ItemStack item) {
         ItemCategory category = CategoryHandler.resolveCategory(item);
         AcCraftRef crafted = CategoryHandler.resolveCraftedMatch(item);
+        GgCraftRef gg = CategoryHandler.resolveGgMatch(item);
+        MagicCraftRef magic = CategoryHandler.resolveMagicMatch(item);
         boolean compositionOnly = usesCompositionValue(item);
         double base = compositionOnly ? 0 : CategoryHandler.resolveItemWeight(item);
 
-        if (category == null && crafted == null) {
+        if (category == null && crafted == null && gg == null && magic == null) {
             if (compositionOnly) {
                 lines.add(sectionTitle("Category match", 0));
                 lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED
@@ -785,6 +822,16 @@ public final class ItemValue {
                     + crafted.getRawId() + ThieveryTexts.MUTED + " ("
                     + crafted.getStatTemplate() + " tier " + crafted.getTier() + ")"));
         }
+        if (gg != null) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Craft: " + ThieveryTexts.INFO
+                    + gg.getRawId() + ThieveryTexts.MUTED + " ("
+                    + gg.getGunType() + " tier " + gg.getTier() + ")"));
+        }
+        if (magic != null) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Craft: " + ThieveryTexts.INFO
+                    + magic.getRawId() + ThieveryTexts.MUTED + " ("
+                    + magic.getGearType() + " tier " + magic.getTier() + ")"));
+        }
         if (compositionOnly) {
             lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED
                     + "  Slug weight ignored - value is composition below"));
@@ -792,7 +839,25 @@ public final class ItemValue {
         return base;
     }
 
+    private static double appendAuraSection(List<String> lines, ItemStack item, double slugBase) {
+        if (MagicCraftRef.fromItem(item).isEmpty()) {
+            return 0;
+        }
+        int band = MagicCraftRef.highestAuraBand(item);
+        double percent = Cache.auraPercent(band);
+        double extra = slugBase * percent;
+        lines.add(ThieveryTexts.formatDisplay(DIVIDER));
+        lines.add(sectionTitle("Aura " + auraNumeral(band), extra));
+        lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Aura "
+                + ThieveryTexts.WHITE + auraNumeral(band)
+                + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT + formatPercent(percent)));
+        return extra;
+    }
+
     private static double appendCompositionSection(List<String> lines, ItemStack item) {
+        if (MagicCraftRef.fromItem(item).isPresent()) {
+            return 0;
+        }
         if (!ThieveryBridge.isPluginReady()) {
             return 0;
         }
@@ -869,18 +934,23 @@ public final class ItemValue {
             }
         }
 
-        double quality = qualityValue(provenance);
+        double percent = Cache.qualityPercent(provenance.getQualityId());
         Quality qualityDef = ThieveryBridge.getQualityById(provenance.getQualityId());
-        if (qualityDef != null) {
+        if (qualityDef != null || percent != 0) {
+            String label = qualityDef != null ? qualityDef.getName() : provenance.getQualityId();
             details.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Quality: " + ThieveryTexts.WHITE
-                    + qualityDef.getName() + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT
-                    + StealItemDisplay.formatValue(quality)));
+                    + label + ThieveryTexts.MUTED + "  →  " + ThieveryTexts.ACCENT + formatPercent(percent)));
         }
 
-        double total = materials + quality;
+        double extra = materials * percent;
+        double total = applyPercent(materials, percent);
         lines.add(ThieveryTexts.formatDisplay(DIVIDER));
         lines.add(sectionTitle("Crafted", total));
         lines.addAll(details);
+        if (extra != 0) {
+            lines.add(ThieveryTexts.formatDisplay(ThieveryTexts.MUTED + "  Quality extra  →  "
+                    + ThieveryTexts.ACCENT + StealItemDisplay.formatValue(extra)));
+        }
         return total;
     }
 

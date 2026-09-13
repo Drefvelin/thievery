@@ -38,7 +38,9 @@ public class Database {
         try (Reader reader = new FileReader(file)) {
             PlayerData data = gson.fromJson(reader, PlayerData.class);
             if (data == null) return new PlayerData(player);
-            data.normalizeAfterLoad();
+            if (data.normalizeAfterLoad()) {
+                savePlayerData(data);
+            }
             return data;
         } catch (IOException e) {
             e.printStackTrace();

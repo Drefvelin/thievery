@@ -1,6 +1,6 @@
 package net.tfminecraft.thievery.player;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import net.tfminecraft.thievery.cache.Cache;
@@ -23,13 +23,13 @@ public class LoadoutSession {
     private final int startingBank;
 
     public LoadoutSession(Set<String> savedActive, Set<String> draftActive, int startingBank) {
-        this.savedActive = new HashSet<>(savedActive);
-        this.draftActive = new HashSet<>(draftActive);
+        this.savedActive = new LinkedHashSet<>(savedActive);
+        this.draftActive = new LinkedHashSet<>(draftActive);
         this.startingBank = startingBank;
     }
 
     public static LoadoutSession from(PlayerData playerData) {
-        Set<String> active = new HashSet<>(playerData.getActiveCategories());
+        Set<String> active = new LinkedHashSet<>(playerData.getActiveCategories());
         return new LoadoutSession(active, active, playerData.getPoints());
     }
 

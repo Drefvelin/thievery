@@ -4,7 +4,28 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.bukkit.inventory.ItemStack;
+
+import me.Plugins.TLibs.TLibs;
+
 public final class CategorySlugs {
+
+    public enum SlugSpecificity {
+        EXACT_PATH(4),
+        FUZZY_PATH(3),
+        CRAFT_REF(2),
+        MATERIAL_TIER(1);
+
+        private final int rank;
+
+        SlugSpecificity(int rank) {
+            this.rank = rank;
+        }
+
+        public int getRank() {
+            return rank;
+        }
+    }
 
     private static final Pattern MATERIAL = Pattern.compile(
             "^ac_(metal|wood|crystal|leather|feather|wool)_tier_(\\d+)$", Pattern.CASE_INSENSITIVE);
@@ -20,12 +41,31 @@ public final class CategorySlugs {
         return slug != null && AcCraftRef.parse(slug.trim()).isPresent();
     }
 
+    public static boolean isGgSlug(String slug) {
+        return slug != null && GgCraftRef.parse(slug.trim()).isPresent();
+    }
+
+    public static boolean isMagicSlug(String slug) {
+        return slug != null && MagicCraftRef.parse(slug.trim()).isPresent();
+    }
+
     public static boolean isCraftSlug(String slug) {
-        return isAcSlug(slug) && !isMaterialSlug(slug);
+        if (slug == null || slug.isBlank()) {
+            return false;
+        }
+        String trimmed = slug.trim();
+        if (isGgSlug(trimmed) || isMagicSlug(trimmed)) {
+            return true;
+        }
+        return isAcSlug(trimmed) && !isMaterialSlug(trimmed);
     }
 
     public static boolean isPathSlug(String slug) {
-        return slug != null && !slug.isBlank() && !isAcSlug(slug);
+        if (slug == null || slug.isBlank()) {
+            return false;
+        }
+        String trimmed = slug.trim();
+        return !isAcSlug(trimmed) && !isGgSlug(trimmed) && !isMagicSlug(trimmed);
     }
 
     public static Optional<AcCraftRef> parseCraftRef(String slug) {
@@ -33,6 +73,20 @@ public final class CategorySlugs {
             return Optional.empty();
         }
         return AcCraftRef.parse(slug.trim());
+    }
+
+    public static Optional<GgCraftRef> parseGgCraftRef(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return GgCraftRef.parse(slug.trim());
+    }
+
+    public static Optional<MagicCraftRef> parseMagicCraftRef(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        return MagicCraftRef.parse(slug.trim());
     }
 
     public static String materialType(String slug) {
@@ -43,5 +97,29 @@ public final class CategorySlugs {
     public static int materialTier(String slug) {
         Matcher matcher = MATERIAL.matcher(slug.trim());
         return matcher.matches() ? Integer.parseInt(matcher.group(2)) : 0;
+    }
+
+    public static Optional<SlugSpecificity> resolve(String slug, ItemStack item, String itemPath) {
+        if (slug == null || slug.isBlank()) {
+            return Optional.empty();
+        }
+        String trimmed = slug.trim();
+        if (isMaterialSlug(trimmed)) {
+            return Optional.of(SlugSpecificity.MATERIAL_TIER);
+        }
+        if (isGgSlug(trimmed) || isMagicSlug(trimmed) || isCraftSlug(trimmed)) {
+            return Optional.of(SlugSpecificity.CRAFT_REF);
+        }
+        if (isPathSlug(trimmed)) {
+            if (itemPath != null && trimmed.equalsIgnoreCase(itemPath)) {
+                return Optional.of(SlugSpecificity.EXACT_PATH);
+            }
+            if (item != null && !item.getType().isAir()
+                    && TLibs.getItemAPI().getChecker().checkItemWithPath(item, trimmed)) {
+                return Optional.of(SlugSpecificity.FUZZY_PATH);
+            }
+            return Optional.empty();
+        }
+        return Optional.empty();
     }
 }

@@ -5,7 +5,7 @@ version: 1.0
 author: Drefvelin
 
 depend: [MMOCore, TLibs, RPCharacters]
-softdepend: [OpenRP, AdvancedCrafting, InteractibleFurniture, DenarEconomy]
+softdepend: [OpenRP, AdvancedCrafting, InteractibleFurniture, DenarEconomy, GunsAndGadgets, Magic]
 loadbefore: [OpenRP]
 
 commands:

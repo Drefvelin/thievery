@@ -22,6 +22,7 @@ import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.block.DoubleChest;
+import org.bukkit.block.Hopper;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -270,31 +271,63 @@ public class ContainerManager implements Listener {
 
     @EventHandler
     public void onInventoryMoveItem(InventoryMoveItemEvent event) {
-        Inventory source = event.getSource();
-        InventoryHolder sourceHolder = source.getHolder();
-
-        if (sourceHolder instanceof DoubleChest doubleChest) {
-            if (!(doubleChest.getLeftSide() instanceof Chest leftChest)) return;
-            if (!(doubleChest.getRightSide() instanceof Chest rightChest)) return;
-
-            ContainerData leftData = containerDataManager.loadContainerData(leftChest.getLocation());
-            ContainerData rightData = containerDataManager.loadContainerData(rightChest.getLocation());
-
-            boolean leftLocked = leftData.getOwner() != null && leftData.getLockState() != LockState.PUBLIC;
-            boolean rightLocked = rightData.getOwner() != null && rightData.getLockState() != LockState.PUBLIC;
-            if (leftLocked || rightLocked) {
-                event.setCancelled(true);
-            }
+        if (!isBlockHopper(event.getInitiator())) {
             return;
         }
-
-        if (sourceHolder instanceof Container container) {
-            ContainerData data = containerDataManager.loadContainerData(container.getBlock().getLocation());
-            boolean locked = data.getOwner() != null && data.getLockState() != LockState.PUBLIC;
-            if (locked) {
+        UUID hopperOwner = getOwnerFromInventory(event.getInitiator());
+        if (hopperOwner == null) {
+            event.setCancelled(true);
+            return;
+        }
+        if (isTrackedBlockContainer(event.getSource())) {
+            UUID sourceOwner = getOwnerFromInventory(event.getSource());
+            if (sourceOwner == null || !sourceOwner.equals(hopperOwner)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+        if (isTrackedBlockContainer(event.getDestination())) {
+            UUID destOwner = getOwnerFromInventory(event.getDestination());
+            if (destOwner == null || !destOwner.equals(hopperOwner)) {
                 event.setCancelled(true);
             }
         }
+    }
+
+    private boolean isBlockHopper(Inventory inv) {
+        return inv != null && inv.getHolder() instanceof Hopper;
+    }
+
+    private boolean isTrackedBlockContainer(Inventory inv) {
+        if (inv == null) {
+            return false;
+        }
+        InventoryHolder holder = inv.getHolder();
+        return holder instanceof Container || holder instanceof DoubleChest;
+    }
+
+    private UUID getOwnerFromInventory(Inventory inv) {
+        if (inv == null) {
+            return null;
+        }
+        InventoryHolder holder = inv.getHolder();
+        if (holder instanceof DoubleChest doubleChest) {
+            if (!(doubleChest.getLeftSide() instanceof Chest leftChest)) {
+                return null;
+            }
+            if (!(doubleChest.getRightSide() instanceof Chest rightChest)) {
+                return null;
+            }
+            ContainerData left = containerDataManager.loadContainerData(leftChest.getLocation());
+            if (left.getOwner() != null) {
+                return left.getOwner();
+            }
+            return containerDataManager.loadContainerData(rightChest.getLocation()).getOwner();
+        }
+        if (holder instanceof Container container) {
+            return containerDataManager.loadContainerData(container.getBlock().getLocation()).getOwner();
+        }
+        return null;
     }
 
 
@@ -714,17 +747,10 @@ public class ContainerManager implements Listener {
     }
 
     private UUID getContainerOwnerUUID(Block block) {
-        Inventory inv = ((Container) block.getState()).getInventory();
-        if (inv instanceof DoubleChestInventory doubleInv) {
-            DoubleChest dc = (DoubleChest) doubleInv.getHolder();
-            if (dc != null) {
-                ContainerData left = containerDataManager.loadContainerData(((Chest) dc.getLeftSide()).getLocation());
-                if (left.getOwner() != null) return left.getOwner();
-                ContainerData right = containerDataManager.loadContainerData(((Chest) dc.getRightSide()).getLocation());
-                return right.getOwner();
-            }
+        if (!(block.getState() instanceof Container container)) {
+            return null;
         }
-        return containerDataManager.loadContainerData(block.getLocation()).getOwner();
+        return getOwnerFromInventory(container.getInventory());
     }
 
     private void lockpickChest(PlayerInteractEvent e) {

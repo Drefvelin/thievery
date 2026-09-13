@@ -53,6 +53,27 @@ point_gain_interval: 24
 
 default_item_value: 0.1
 
+# Percents on steal base (composition for AC, slug weight for Magic). Gems are not multiplied.
+# Missing / unknown quality or unattuned aura band 0 is 0%. aura_mins matches Magic charges.yml bands.default.
+item_value:
+  quality:
+    rusted: -0.20
+    tempered: 0.00
+    polished: 0.25
+    gleaming: 0.50
+    masterwork: 0.75
+  aura:
+    0: 0.00
+    1: 0.00
+    2: 0.15
+    3: 0.40
+    4: 0.75
+  aura_mins:
+    1: 10
+    2: 40
+    3: 75
+    4: 110
+
 clues:
   recent-max: 6
   recent-cooldown-hours: 72

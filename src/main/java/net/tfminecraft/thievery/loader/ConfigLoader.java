@@ -5,6 +5,7 @@ import java.io.IOException;
 
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -39,6 +40,7 @@ public class ConfigLoader {
         Cache.pointGainIntervalHours = config.getInt("point_gain_interval", 24);
         Cache.defaultItemValue = config.getDouble("default_item_value",
                 config.getDouble("default_value", 0.1));
+        loadItemValue(config.getConfigurationSection("item_value"));
 
         if (config.contains("traits")) Cache.traits = config.getStringList("traits");
 
@@ -161,5 +163,43 @@ public class ConfigLoader {
             }
         }
         return types;
+    }
+
+    private static void loadItemValue(ConfigurationSection section) {
+        Cache.putDefaultItemValueTables();
+        if (section == null) {
+            return;
+        }
+        ConfigurationSection quality = section.getConfigurationSection("quality");
+        if (quality != null && !quality.getKeys(false).isEmpty()) {
+            Cache.clearQualityPercents();
+            for (String key : quality.getKeys(false)) {
+                Cache.putQualityPercent(key, quality.getDouble(key));
+            }
+        }
+        ConfigurationSection aura = section.getConfigurationSection("aura");
+        if (aura != null && !aura.getKeys(false).isEmpty()) {
+            Cache.clearAuraPercents();
+            for (String key : aura.getKeys(false)) {
+                try {
+                    Cache.putAuraPercent(Integer.parseInt(key.trim()), aura.getDouble(key));
+                } catch (NumberFormatException ignored) {
+                    Thievery.getInstance().getLogger().warning(
+                            "[Thievery] item_value.aura '" + key + "' is not a band number");
+                }
+            }
+        }
+        ConfigurationSection mins = section.getConfigurationSection("aura_mins");
+        if (mins != null && !mins.getKeys(false).isEmpty()) {
+            Cache.clearAuraMins();
+            for (String key : mins.getKeys(false)) {
+                try {
+                    Cache.putAuraMin(Integer.parseInt(key.trim()), mins.getDouble(key));
+                } catch (NumberFormatException ignored) {
+                    Thievery.getInstance().getLogger().warning(
+                            "[Thievery] item_value.aura_mins '" + key + "' is not a band number");
+                }
+            }
+        }
     }
 }

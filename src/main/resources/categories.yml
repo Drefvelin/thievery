@@ -1,3 +1,7 @@
+# Item entries: "slug" or "slug weight". When multiple slugs match one item,
+# the most specific wins: exact path > fuzzy path > craft ref > material tier.
+# Example: ac_crystal_tier_2 plus m.materials.ignitium 2.5 — ignitium uses 2.5.
+#
 # Steal budget cost per 1 denar (physical coins and robbery pouch). Coins require this category in loadout.
 money:
   name: "#c9a227Money"
@@ -317,6 +321,90 @@ tier_4_bows:
     - ac_shortbow_tier_4
     - ac_crossbow_tier_4
     - ac_longbow_tier_4
+
+tier_1_guns:
+  name: "#e8e0d4Tier I Guns"
+  icon: m.guns.rifle_template
+  cost: 2
+  value: 0.0
+  items:
+    - gg_rifle_tier_1
+    - gg_pistol_tier_1
+    - gg_shotgun_tier_1
+    - gg_launcher_tier_1
+
+tier_2_guns:
+  name: "#9a9a9aTier II Guns"
+  icon: m.guns.rifle_template
+  cost: 3
+  value: 0.0
+  items:
+    - gg_rifle_tier_2
+    - gg_pistol_tier_2
+    - gg_shotgun_tier_2
+    - gg_launcher_tier_2
+
+tier_3_guns:
+  name: "#7b68a6Tier III Guns"
+  icon: m.guns.rifle_template
+  cost: 4
+  value: 0.0
+  items:
+    - gg_rifle_tier_3
+    - gg_pistol_tier_3
+    - gg_shotgun_tier_3
+    - gg_launcher_tier_3
+
+tier_4_guns:
+  name: "#c9a227Tier IV Guns"
+  icon: m.guns.rifle_template
+  cost: 5
+  value: 0.0
+  items:
+    - gg_rifle_tier_4
+    - gg_pistol_tier_4
+    - gg_shotgun_tier_4
+    - gg_launcher_tier_4
+
+tier_1_magic:
+  name: "#e8e0d4Tier I Magic"
+  icon: m.mage_staffs.mage_custom_staff
+  cost: 2
+  value: 0.0
+  items:
+    - magic_staff_tier_1
+    - magic_wand_tier_1
+    - magic_sword_tier_1
+
+tier_2_magic:
+  name: "#9a9a9aTier II Magic"
+  icon: m.mage_staffs.mage_custom_staff
+  cost: 3
+  value: 0.0
+  items:
+    - magic_staff_tier_2
+    - magic_wand_tier_2
+    - magic_sword_tier_2
+
+tier_3_magic:
+  name: "#7b68a6Tier III Magic"
+  icon: m.mage_staffs.mage_custom_staff
+  cost: 4
+  value: 0.0
+  items:
+    - magic_staff_tier_3
+    - magic_wand_tier_3
+    - magic_sword_tier_3
+
+tier_4_magic:
+  name: "#c9a227Tier IV Magic"
+  icon: m.mage_staffs.mage_custom_staff
+  cost: 5
+  value: 0.0
+  items:
+    - magic_staff_tier_4
+    - magic_wand_tier_4
+    - magic_sword_tier_4
 
 basic_gems:
   name: "#e8e0d4Basic Gemstones"

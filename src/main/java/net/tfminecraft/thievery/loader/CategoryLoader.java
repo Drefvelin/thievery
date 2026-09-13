@@ -11,15 +11,16 @@ import java.util.Set;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.inventory.ItemStack;
 
 import me.Plugins.TLibs.Interface.LoaderInterface;
-import me.Plugins.TLibs.TLibs;
 import net.tfminecraft.AdvancedCrafting.Utils.ThieveryBridge;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.category.AcCraftRef;
+import net.tfminecraft.thievery.category.CategoryHandler;
 import net.tfminecraft.thievery.category.CategorySlugs;
+import net.tfminecraft.thievery.category.GgCraftRef;
+import net.tfminecraft.thievery.category.MagicCraftRef;
 import net.tfminecraft.thievery.category.ItemCategory;
 import net.tfminecraft.thievery.category.ItemCategory.CategoryItemEntry;
 
@@ -70,45 +71,20 @@ public class CategoryLoader implements LoaderInterface {
         return Cache.defaultItemValue;
     }
 
+    public static double getWeightForGgRef(GgCraftRef ref) {
+        return CategoryHandler.getWeightForGgRef(ref);
+    }
+
+    public static double getWeightForMagicRef(MagicCraftRef ref) {
+        return CategoryHandler.getWeightForMagicRef(ref);
+    }
+
     public static double getWeightForCraftRef(AcCraftRef ref) {
-        if (ref == null) {
-            return Cache.defaultItemValue;
-        }
-        for (ItemCategory category : getAsList()) {
-            for (CategoryItemEntry entry : category.getItems()) {
-                var parsed = CategorySlugs.parseCraftRef(entry.getSlug());
-                if (parsed.isPresent() && parsed.get().equals(ref)) {
-                    return entry.getWeight();
-                }
-            }
-        }
-        return Cache.defaultItemValue;
+        return CategoryHandler.getWeightForCraftRef(ref);
     }
 
     public static double getWeightForPath(String path) {
-        if (path == null || path.isBlank()) {
-            return Cache.defaultItemValue;
-        }
-        for (ItemCategory category : getAsList()) {
-            for (CategoryItemEntry entry : category.getItems()) {
-                if (CategorySlugs.isPathSlug(entry.getSlug())
-                        && entry.getSlug().equalsIgnoreCase(path)) {
-                    return entry.getWeight();
-                }
-            }
-        }
-        ItemStack probe = TLibs.getItemAPI().getCreator().getItemFromPath(path);
-        if (probe != null) {
-            for (ItemCategory category : getAsList()) {
-                for (CategoryItemEntry entry : category.getItems()) {
-                    if (CategorySlugs.isPathSlug(entry.getSlug())
-                            && TLibs.getItemAPI().getChecker().checkItemWithPath(probe, entry.getSlug())) {
-                        return entry.getWeight();
-                    }
-                }
-            }
-        }
-        return Cache.defaultItemValue;
+        return CategoryHandler.getWeightForPath(path);
     }
 
     @Override
@@ -140,7 +116,9 @@ public class CategoryLoader implements LoaderInterface {
     private static void validateCraftSlugs() {
         for (ItemCategory category : categories.values()) {
             for (CategoryItemEntry entry : category.getItems()) {
-                if (!CategorySlugs.isCraftSlug(entry.getSlug())) {
+                if (!CategorySlugs.isCraftSlug(entry.getSlug())
+                        || CategorySlugs.isGgSlug(entry.getSlug())
+                        || CategorySlugs.isMagicSlug(entry.getSlug())) {
                     continue;
                 }
                 CategorySlugs.parseCraftRef(entry.getSlug()).ifPresent(ref -> {

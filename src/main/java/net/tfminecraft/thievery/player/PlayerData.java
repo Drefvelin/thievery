@@ -232,7 +232,7 @@ public class PlayerData {
         recentClues.clear();
     }
 
-    public void normalizeAfterLoad() {
+    public boolean normalizeAfterLoad() {
         if (activeCategories == null) {
             activeCategories = new ArrayList<>();
         }
@@ -269,6 +269,18 @@ public class PlayerData {
         }
         setRisk(risk);
         migrateLegacyCategoryIds();
+        return enforceCategoryPointsCap();
+    }
+
+    public boolean enforceCategoryPointsCap() {
+        boolean changed = false;
+        while (getAllocatedCost() > Cache.categoryPoints && !activeCategories.isEmpty()) {
+            activeCategories.remove(activeCategories.size() - 1);
+            changed = true;
+        }
+        int before = points;
+        setPoints(points);
+        return changed || before != points;
     }
 
     private void migrateLegacyCategoryIds() {
