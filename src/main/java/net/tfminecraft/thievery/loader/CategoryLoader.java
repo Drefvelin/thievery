@@ -105,12 +105,15 @@ public class CategoryLoader implements LoaderInterface {
             for (CategoryItemEntry entry : category.getItems()) {
                 if (CategorySlugs.isPathSlug(entry.getSlug())) {
                     warnDuplicatePath(entry.getSlug(), key);
+                } else if (CategorySlugs.isMmoTypeSlug(entry.getSlug())) {
+                    warnDuplicateMmoType(entry.getSlug(), key);
                 }
             }
             categories.put(key, category);
         }
 
         validateCraftSlugs();
+        validateMmoTypeSlugs();
     }
 
     private static void validateCraftSlugs() {
@@ -130,6 +133,37 @@ public class CategoryLoader implements LoaderInterface {
                                         + ref.getStatTemplate() + "' in '" + ref.getRawId() + "'");
                     }
                 });
+            }
+        }
+    }
+
+    private static void validateMmoTypeSlugs() {
+        for (ItemCategory category : categories.values()) {
+            for (CategoryItemEntry entry : category.getItems()) {
+                if (!CategorySlugs.isMmoTypeSlug(entry.getSlug())) {
+                    continue;
+                }
+                String typeId = CategorySlugs.mmoTypeId(entry.getSlug());
+                if (CategoryHandler.lookupMmoType(typeId) == null) {
+                    Thievery.getInstance().getLogger().warning(
+                            "[Thievery] Category '" + category.getId()
+                                    + "' references unknown MMOItems type '" + typeId
+                                    + "' in '" + entry.getSlug() + "'");
+                }
+            }
+        }
+    }
+
+    private static void warnDuplicateMmoType(String slug, String categoryId) {
+        for (ItemCategory existing : categories.values()) {
+            for (CategoryItemEntry entry : existing.getItems()) {
+                if (CategorySlugs.isMmoTypeSlug(entry.getSlug())
+                        && entry.getSlug().equalsIgnoreCase(slug)
+                        && !existing.getId().equalsIgnoreCase(categoryId)) {
+                    Thievery.getInstance().getLogger().severe(
+                            "[Thievery] MMOItems type '" + slug + "' is defined in both '"
+                                    + existing.getId() + "' and '" + categoryId + "'");
+                }
             }
         }
     }

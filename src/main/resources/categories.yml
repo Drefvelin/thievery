@@ -1,6 +1,7 @@
 # Item entries: "slug" or "slug weight". When multiple slugs match one item,
-# the most specific wins: exact path > fuzzy path > craft ref > material tier.
+# the most specific wins: exact path > fuzzy path > craft ref > material tier > mmo type.
 # Example: ac_crystal_tier_2 plus m.materials.ignitium 2.5 — ignitium uses 2.5.
+# Type-only MMOItems: "m.materials 10" matches any MATERIALS item unless a more specific slug hits.
 #
 # Steal budget cost per 1 denar (physical coins and robbery pouch). Coins require this category in loadout.
 money:

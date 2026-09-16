@@ -10,6 +10,8 @@ import org.bukkit.inventory.ItemStack;
 
 import me.Plugins.TLibs.TLibs;
 import me.Plugins.TLibs.Objects.API.SubAPI.StringFormatter;
+import net.Indyuce.mmoitems.MMOItems;
+import net.Indyuce.mmoitems.api.Type;
 import net.tfminecraft.AdvancedCrafting.Objects.Alloys.Alloy;
 import net.tfminecraft.AdvancedCrafting.Objects.Crafting.CraftingRecipe;
 import net.tfminecraft.AdvancedCrafting.Objects.Data.CraftProvenance;
@@ -300,7 +302,7 @@ public final class CategoryHandler {
         if (CategorySlugs.isMaterialSlug(slug)) {
             return matchesAcMaterialSlug(slug, item);
         }
-        if (CategorySlugs.isPathSlug(slug)) {
+        if (CategorySlugs.isMmoTypeSlug(slug) || CategorySlugs.isPathSlug(slug)) {
             return TLibs.getItemAPI().getChecker().checkItemWithPath(item, slug);
         }
         return false;
@@ -448,6 +450,8 @@ public final class CategoryHandler {
             } else if (CategorySlugs.isCraftSlug(slug)) {
                 CategorySlugs.parseCraftRef(slug).ifPresent(ref ->
                         lore.addAll(buildAcCraftRefLines(ref, entry.getWeight())));
+            } else if (CategorySlugs.isMmoTypeSlug(slug)) {
+                lore.add(formatLine(resolveMmoTypeDisplayName(slug), entry.getWeight()));
             } else if (CategorySlugs.isPathSlug(slug)) {
                 ItemStack preview = TLibs.getItemAPI().getCreator().getItemFromPath(slug);
                 String itemName = preview != null ? StringFormatter.getName(preview) : slug;
@@ -564,6 +568,30 @@ public final class CategoryHandler {
             return StringFormatter.getName(preview);
         }
         return formatId(ingredient.getId());
+    }
+
+    public static Type lookupMmoType(String typeId) {
+        if (typeId == null || typeId.isBlank() || MMOItems.plugin == null) {
+            return null;
+        }
+        var types = MMOItems.plugin.getTypes();
+        Type type = types.get(typeId);
+        if (type != null) {
+            return type;
+        }
+        return types.get(typeId.toUpperCase());
+    }
+
+    public static String resolveMmoTypeDisplayName(String slug) {
+        String typeId = CategorySlugs.mmoTypeId(slug);
+        if (typeId == null) {
+            return slug;
+        }
+        Type type = lookupMmoType(typeId);
+        if (type != null && type.getName() != null && !type.getName().isBlank()) {
+            return type.getName();
+        }
+        return typeId;
     }
 
     private static String formatId(String id) {

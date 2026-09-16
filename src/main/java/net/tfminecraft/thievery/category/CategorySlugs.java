@@ -14,7 +14,8 @@ public final class CategorySlugs {
         EXACT_PATH(4),
         FUZZY_PATH(3),
         CRAFT_REF(2),
-        MATERIAL_TIER(1);
+        MATERIAL_TIER(1),
+        MMO_TYPE(0);
 
         private final int rank;
 
@@ -65,7 +66,25 @@ public final class CategorySlugs {
             return false;
         }
         String trimmed = slug.trim();
+        if (isMmoTypeSlug(trimmed)) {
+            return false;
+        }
         return !isAcSlug(trimmed) && !isGgSlug(trimmed) && !isMagicSlug(trimmed);
+    }
+
+    public static boolean isMmoTypeSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return false;
+        }
+        String[] parts = slug.trim().split("\\.");
+        return parts.length == 2 && parts[0].equalsIgnoreCase("m") && !parts[1].isBlank();
+    }
+
+    public static String mmoTypeId(String slug) {
+        if (!isMmoTypeSlug(slug)) {
+            return null;
+        }
+        return slug.trim().split("\\.")[1];
     }
 
     public static Optional<AcCraftRef> parseCraftRef(String slug) {
@@ -109,6 +128,13 @@ public final class CategorySlugs {
         }
         if (isGgSlug(trimmed) || isMagicSlug(trimmed) || isCraftSlug(trimmed)) {
             return Optional.of(SlugSpecificity.CRAFT_REF);
+        }
+        if (isMmoTypeSlug(trimmed)) {
+            if (item != null && !item.getType().isAir()
+                    && TLibs.getItemAPI().getChecker().checkItemWithPath(item, trimmed)) {
+                return Optional.of(SlugSpecificity.MMO_TYPE);
+            }
+            return Optional.empty();
         }
         if (isPathSlug(trimmed)) {
             if (itemPath != null && trimmed.equalsIgnoreCase(itemPath)) {
