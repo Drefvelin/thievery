@@ -115,7 +115,7 @@ public class DisplayStealManager implements Listener {
             java.util.function.Supplier<LockState> rotate) {
         if (owner == null) {
             claim.accept(player.getUniqueId());
-            notifyLockStateChange(player, LockState.PRIVATE);
+            notifyLockStateChange(player, LockState.DEFAULT);
             return;
         }
         if (owner.equals(player.getUniqueId())) {
@@ -355,9 +355,9 @@ public class DisplayStealManager implements Listener {
             return;
         }
         data.setOwner(player.getUniqueId());
-        data.setLockState(LockState.PRIVATE);
+        data.setLockState(LockState.DEFAULT);
         lockDataManager.save(data);
-        notifyLockStateChange(player, LockState.PRIVATE);
+        notifyLockStateChange(player, LockState.DEFAULT);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -372,9 +372,9 @@ public class DisplayStealManager implements Listener {
             return;
         }
         data.setOwner(player.getUniqueId());
-        data.setLockState(LockState.PRIVATE);
+        data.setLockState(LockState.DEFAULT);
         lockDataManager.save(data);
-        notifyLockStateChange(player, LockState.PRIVATE);
+        notifyLockStateChange(player, LockState.DEFAULT);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -391,7 +391,7 @@ public class DisplayStealManager implements Listener {
             event.setCancelled(true);
             applyToggle(player, data.getOwner(), owner -> {
                 data.setOwner(owner);
-                data.setLockState(LockState.PRIVATE);
+                data.setLockState(LockState.DEFAULT);
                 lockDataManager.save(data);
             }, () -> {
                 LockState next = data.rotateLockState();
@@ -463,7 +463,7 @@ public class DisplayStealManager implements Listener {
             event.setCancelled(true);
             applyToggle(player, data.getOwner(), owner -> {
                 data.setOwner(owner);
-                data.setLockState(LockState.PRIVATE);
+                data.setLockState(LockState.DEFAULT);
                 lockDataManager.save(data);
             }, () -> {
                 LockState next = data.rotateLockState();

@@ -21,7 +21,7 @@ public class EntityLockDataManager {
 
     private static class EntityLockDataJson {
         UUID owner;
-        LockState lockState = LockState.PRIVATE;
+        LockState lockState = LockState.DEFAULT;
     }
 
     public EntityLockDataManager() {

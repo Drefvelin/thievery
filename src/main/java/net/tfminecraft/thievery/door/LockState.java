@@ -5,6 +5,8 @@ public enum LockState {
     GUILD,
     PUBLIC;
 
+    public static final LockState DEFAULT = PUBLIC;
+
     public LockState next() {
         LockState[] values = values();
         return values[(ordinal() + 1) % values.length];

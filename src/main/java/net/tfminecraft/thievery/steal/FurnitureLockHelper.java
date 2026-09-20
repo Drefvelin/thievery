@@ -52,16 +52,16 @@ public final class FurnitureLockHelper {
 
     public static LockState getLockState(Furniture furniture) {
         if (furniture == null) {
-            return LockState.PRIVATE;
+            return LockState.DEFAULT;
         }
         Object raw = furniture.getVariables().get(LOCK_STATE_KEY);
         if (raw == null) {
-            return LockState.PRIVATE;
+            return LockState.DEFAULT;
         }
         try {
             return LockState.valueOf(raw.toString().toUpperCase());
         } catch (IllegalArgumentException ignored) {
-            return LockState.PRIVATE;
+            return LockState.DEFAULT;
         }
     }
 
@@ -69,7 +69,7 @@ public final class FurnitureLockHelper {
         if (furniture == null) {
             return;
         }
-        LockState state = lockState == null ? LockState.PRIVATE : lockState;
+        LockState state = lockState == null ? LockState.DEFAULT : lockState;
         furniture.getVariables().put(LOCK_STATE_KEY, state.name());
         persist(furniture);
     }

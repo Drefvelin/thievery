@@ -26,7 +26,7 @@ public class ContainerDataManager {
 
     private static class ContainerDataJson {
         UUID owner;
-        LockState lockState = LockState.PRIVATE;
+        LockState lockState = LockState.DEFAULT;
         Map<UUID, String> accessMap = new HashMap<>();
     }
 

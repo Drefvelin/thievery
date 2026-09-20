@@ -42,8 +42,8 @@ public class FurnitureDisplayListener implements Listener {
         }
         Player player = event.getPlayer();
         FurnitureLockHelper.setOwner(furniture, player.getUniqueId());
-        FurnitureLockHelper.setLockState(furniture, LockState.PRIVATE);
-        DisplayStealManager.notifyLockStateChange(player, LockState.PRIVATE);
+        FurnitureLockHelper.setLockState(furniture, LockState.DEFAULT);
+        DisplayStealManager.notifyLockStateChange(player, LockState.DEFAULT);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -57,7 +57,7 @@ public class FurnitureDisplayListener implements Listener {
             event.setCancelled(true);
             DisplayStealManager.applyToggle(player, FurnitureLockHelper.getOwner(furniture), owner -> {
                 FurnitureLockHelper.setOwner(furniture, owner);
-                FurnitureLockHelper.setLockState(furniture, LockState.PRIVATE);
+                FurnitureLockHelper.setLockState(furniture, LockState.DEFAULT);
             }, () -> FurnitureLockHelper.rotateLockState(furniture));
             return;
         }

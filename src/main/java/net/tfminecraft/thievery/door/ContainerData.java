@@ -11,7 +11,7 @@ public class ContainerData {
 
     private Location location;
     private UUID owner;
-    private LockState lockState = LockState.PRIVATE;
+    private LockState lockState = LockState.DEFAULT;
     private Map<UUID, String> accessMap = new HashMap<>();
 
     public ContainerData(Location location) {
@@ -49,7 +49,7 @@ public class ContainerData {
     }
 
     public void setLockState(LockState lockState) {
-        this.lockState = lockState == null ? LockState.PRIVATE : lockState;
+        this.lockState = lockState == null ? LockState.DEFAULT : lockState;
     }
 
     public LockState rotateLockState() {

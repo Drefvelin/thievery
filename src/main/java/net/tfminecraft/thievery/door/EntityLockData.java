@@ -8,7 +8,7 @@ public class EntityLockData {
 
     private final UUID entityId;
     private UUID owner;
-    private LockState lockState = LockState.PRIVATE;
+    private LockState lockState = LockState.DEFAULT;
 
     public EntityLockData(UUID entityId) {
         this.entityId = entityId;
@@ -44,7 +44,7 @@ public class EntityLockData {
     }
 
     public void setLockState(LockState lockState) {
-        this.lockState = lockState == null ? LockState.PRIVATE : lockState;
+        this.lockState = lockState == null ? LockState.DEFAULT : lockState;
     }
 
     public LockState rotateLockState() {
