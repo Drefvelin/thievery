@@ -13,6 +13,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import net.tfminecraft.thievery.Thievery;
 import net.tfminecraft.thievery.cache.Cache;
 import net.tfminecraft.thievery.cache.Parameters;
+import net.tfminecraft.thievery.door.LockState;
+import net.tfminecraft.thievery.door.LockTypeProfile;
 import net.tfminecraft.thievery.player.RiskCalculator;
 import net.tfminecraft.thievery.utils.ThieveryTexts;
 
@@ -85,6 +87,7 @@ public class ConfigLoader {
         Parameters.chestBaseSuccessChance = config.getDouble("lockpicking.chest.base-success-chance",
                 config.getDouble("lockpicking.chest.base-chance", 1.0));
         Parameters.chestBreakChanceRampPerSlot = config.getDouble("lockpicking.chest.break-chance-ramp-per-slot", 0.1);
+        loadLockTypeProfiles(config);
         Parameters.maxSuccessChance = config.getDouble("lockpicking.max-success-chance", 0.95);
         if (config.isConfigurationSection("lockpicking.dex-map")) {
             RiskCalculator.loadDexterityLerp(config.getConfigurationSection("lockpicking.dex-map").getValues(false));
@@ -116,6 +119,32 @@ public class ConfigLoader {
         Parameters.lockableEntityTypes = loadLockableEntityTypes(config);
         Parameters.displayLockStrength = Math.min(1.0, Math.max(0.0,
                 config.getDouble("lockpicking.display-lock-strength", 0.5)));
+    }
+
+    private static void loadLockTypeProfiles(FileConfiguration config) {
+        Parameters.clearLockTypeProfiles();
+        ConfigurationSection types = config.getConfigurationSection("lockpicking.lock-types");
+        if (types == null) {
+            return;
+        }
+        for (String key : types.getKeys(false)) {
+            if (key == null || key.isBlank()) {
+                continue;
+            }
+            LockState state;
+            try {
+                state = LockState.valueOf(key.trim().toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+                Thievery.getInstance().getLogger().warning("Unknown lockpicking lock type: " + key);
+                continue;
+            }
+            ConfigurationSection section = types.getConfigurationSection(key);
+            double budget = section == null ? 1.0 : section.getDouble("budget-multiplier", 1.0);
+            double risk = section == null ? 1.0 : section.getDouble("risk-multiplier", 1.0);
+            boolean critical = section == null || section.getBoolean("critical-risk", true);
+            double breakChance = section == null ? 1.0 : section.getDouble("break-chance-multiplier", 1.0);
+            Parameters.putLockTypeProfile(state, new LockTypeProfile(budget, risk, critical, breakChance));
+        }
     }
 
     private static java.util.Set<Material> loadExcludedContainers(FileConfiguration config) {

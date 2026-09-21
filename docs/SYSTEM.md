@@ -39,7 +39,7 @@ Honor `min-lock-strength-ratio` against that display strength.
 
 ## Lock state
 
-Reuse `LockState` (`PRIVATE` / `GUILD` / `PUBLIC`) and the same access rules as `ContainerData.canAccess` (owner, guild, public, `thievery.admin` bypass).
+Reuse `LockState` (`PRIVATE` / `GUILD` / `FACTION` / `PUBLIC`) and the same access rules as `ContainerData.canAccess` (owner, same guild, same faction, public, `thievery.admin` bypass). `FACTION` is every guild in the owner's faction. Vassals are not included. Chest lockpick sessions scale budget, risk, critical chance, and break chance from `lockpicking.lock-types`.
 
 Shift left-click is the toggle (same titles/sound as chests). Only the owner rotates state. Shift left-click **never** breaks a lockable display.
 

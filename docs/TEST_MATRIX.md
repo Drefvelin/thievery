@@ -15,11 +15,12 @@ Manual checks after the matching implementation batch. Player-facing strings mus
 
 | # | Check |
 |---|--------|
-| L1 | Shift left-click on `artifact_display` / `pedestal` cycles PRIVATE / GUILD / PUBLIC, does not break |
+| L1 | Shift left-click on `artifact_display` / `pedestal` cycles PRIVATE / GUILD / FACTION / PUBLIC, does not break |
 | L2 | Non-owner shift left-click does not break and does not change state |
 | L3 | Stranger cannot take slot items from a PRIVATE locked display |
 | L4 | Owner can take and can break |
 | L5 | Guild member can access GUILD; outsider cannot |
+| L5b | Faction member in another guild can access FACTION; another faction cannot |
 | L6 | PUBLIC anyone can take/break |
 | L7 | Unlisted IF type still breaks on left-click as today |
 | L8 | Armor stand: sneak-hit toggles; locked stand cannot be stripped or killed by stranger |

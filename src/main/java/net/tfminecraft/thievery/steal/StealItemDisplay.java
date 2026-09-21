@@ -22,7 +22,8 @@ public final class StealItemDisplay {
             int dexterity,
             double lockpickStrength,
             double sessionRisk,
-            int successfulClueDrops
+            int successfulClueDrops,
+            boolean criticalRisk
     ) {}
 
     private StealItemDisplay() {}
@@ -125,10 +126,10 @@ public final class StealItemDisplay {
         boolean guaranteed = cluePreview.successfulClueDrops() < Cache.minCluesContainer;
         RiskCalculator.TakeCluePreview one = RiskCalculator.computeTakeCluePreview(
                 cluePreview.sessionRisk(), values.valueOne(), cluePreview.dexterity(),
-                cluePreview.lockpickStrength(), guaranteed);
+                cluePreview.lockpickStrength(), guaranteed, cluePreview.criticalRisk());
         RiskCalculator.TakeCluePreview all = RiskCalculator.computeTakeCluePreview(
                 cluePreview.sessionRisk(), values.valueAll(), cluePreview.dexterity(),
-                cluePreview.lockpickStrength(), guaranteed);
+                cluePreview.lockpickStrength(), guaranteed, cluePreview.criticalRisk());
 
         lore.add("");
         if (guaranteed) {

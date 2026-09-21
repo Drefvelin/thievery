@@ -575,6 +575,7 @@ public class ContainerManager implements Listener {
                 ThieveryTexts.msg(ThieveryTexts.ACCENT + "Lock State"),
                 ThieveryTexts.msg(ThieveryTexts.WARN + displayState), 5, 30, 10);
         player.playSound(player.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_OPEN, 1.0f, 1.0f);
+        FactionLockTutorial.onLockState(player, lockState);
     }
 
     private String formatLockState(LockState lockState) {
@@ -791,8 +792,9 @@ public class ContainerManager implements Listener {
         double successChance = ChestLockpickSession.computeSuccessChance(dexterity, lockpickDef.getStrength());
 
         String targetKey = TargetKeyResolver.resolve(getContainerOwnerUUID(b));
+        LockTypeProfile lockType = Parameters.lockTypeProfile(data.getLockState());
         ChestLockpickSession session = new ChestLockpickSession(playerId, b, lockpickDef, successChance, chestInv,
-                targetKey);
+                targetKey, lockType);
         lockpickingSessions.put(playerId, session);
 
         ChestStealReference reference = new ChestStealReference(session, () -> lockpickingSessions.remove(playerId));

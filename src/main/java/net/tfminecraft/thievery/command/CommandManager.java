@@ -50,6 +50,15 @@ public class CommandManager implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length >= 1 && args[0].equalsIgnoreCase("dismissfactionlock")) {
+            if (!(sender instanceof Player player)) {
+                msg(sender, ThieveryTexts.ERROR + "This command can only be used by players.");
+                return true;
+            }
+            msg(player, ThieveryTexts.SUCCESS + "Got it.");
+            return true;
+        }
+
         if (args.length >= 1 && args[0].equalsIgnoreCase("itemvalue")) {
             if (!sender.hasPermission("thievery.admin")) {
                 msg(sender, ThieveryTexts.ERROR + "You don't have permission to use this command.");

@@ -336,11 +336,12 @@ public final class StealGui {
     }
 
     public static String forChest(PlayerData thiefData, int dexterity, double lockpickStrength, StealBudget budget,
-            double successChance, boolean lockpickBroken) {
+            double successChance, boolean lockpickBroken, boolean criticalRisk) {
         Double breakChance = lockpickBroken ? null : (1.0 - successChance);
+        double critical = criticalRisk ? thiefData.getCriticalChance(dexterity, lockpickStrength) : 0.0;
         return formatTitle(new TitleOptions(
                 thiefData.getRisk(),
-                thiefData.getCriticalChance(dexterity, lockpickStrength),
+                critical,
                 null,
                 budget,
                 breakChance));

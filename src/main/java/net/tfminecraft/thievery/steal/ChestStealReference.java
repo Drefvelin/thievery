@@ -47,7 +47,8 @@ public class ChestStealReference extends HiddenStealReference {
         PlayerData thiefData = Thievery.getPlayerManager().get(thief.getUniqueId());
         double lockpickStrength = session.getLockpickDef().getStrength();
         return StealGui.forChest(thiefData, dexterity, lockpickStrength, session.getBudget(),
-                session.getNextRevealSuccessChance(), session.isLockpickBroken());
+                session.getNextRevealSuccessChance(), session.isLockpickBroken(),
+                session.getLockType().criticalRisk());
     }
 
     @Override
@@ -85,7 +86,8 @@ public class ChestStealReference extends HiddenStealReference {
         int dexterity = RiskCalculator.getDexterity(thief);
         double lockpickStrength = session.getLockpickDef().getStrength();
         PlayerData thiefData = Thievery.getPlayerManager().get(thief.getUniqueId());
-        thiefData.addRiskGain(dexterity, lockpickStrength, RiskSource.CHEST);
+        thiefData.addRiskGain(dexterity, lockpickStrength, RiskSource.CHEST,
+                session.getLockType().riskMultiplier());
         Database.savePlayerData(thiefData);
 
         if (Math.random() >= session.getNextRevealSuccessChance()) {
@@ -166,7 +168,8 @@ public class ChestStealReference extends HiddenStealReference {
                 dexterity,
                 lockpickStrength,
                 thiefData.getRisk(),
-                session.getSuccessfulClueDrops());
+                session.getSuccessfulClueDrops(),
+                session.getLockType().criticalRisk());
     }
 
     private void breakLockpick(Player player) {

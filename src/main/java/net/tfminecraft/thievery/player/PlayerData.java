@@ -97,12 +97,17 @@ public class PlayerData {
     }
 
     public void addRiskGain(int dexterity, double lockpickStrength, RiskSource source) {
+        addRiskGain(dexterity, lockpickStrength, source, 1.0);
+    }
+
+    public void addRiskGain(int dexterity, double lockpickStrength, RiskSource source, double riskMultiplier) {
         applyRiskDecay(dexterity);
+        double scale = Math.max(0.0, riskMultiplier);
         double min;
         double max;
         if (source == RiskSource.CHEST) {
-            min = Cache.riskGainChestMin;
-            max = Cache.riskGainChestMax;
+            min = Cache.riskGainChestMin * scale;
+            max = Cache.riskGainChestMax * scale;
         } else if (source == RiskSource.PICKPOCKET) {
             min = Cache.riskGainPickpocketMin;
             max = Cache.riskGainPickpocketMax;

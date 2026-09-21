@@ -134,7 +134,14 @@ public final class RiskCalculator {
 
     public static TakeCluePreview computeTakeCluePreview(double sessionRisk, double stolenValue,
             int dexterity, double lockpickStrength, boolean guaranteedClue) {
-        double criticalIfClue = computeCritical(sessionRisk, dexterity, lockpickStrength);
+        return computeTakeCluePreview(sessionRisk, stolenValue, dexterity, lockpickStrength, guaranteedClue, true);
+    }
+
+    public static TakeCluePreview computeTakeCluePreview(double sessionRisk, double stolenValue,
+            int dexterity, double lockpickStrength, boolean guaranteedClue, boolean criticalRisk) {
+        double criticalIfClue = criticalRisk
+                ? computeCritical(sessionRisk, dexterity, lockpickStrength)
+                : 0.0;
         if (guaranteedClue) {
             return new TakeCluePreview(1.0, criticalIfClue);
         }

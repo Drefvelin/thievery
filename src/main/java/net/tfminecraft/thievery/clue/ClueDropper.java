@@ -42,7 +42,8 @@ public final class ClueDropper {
         }
 
         String targetKey = session.getTargetKey();
-        String clueText = pickClue(player, playerData, targetKey, dexterity, lockpickStrength, sessionRisk);
+        String clueText = pickClue(player, playerData, targetKey, dexterity, lockpickStrength, sessionRisk,
+                session.getLockType().criticalRisk());
         if (clueText == null) return;
 
         boolean hologramSpawned = trySpawnHologram(player, player.getLocation(), chestBlock.getLocation(), clueText);
@@ -61,7 +62,7 @@ public final class ClueDropper {
         }
 
         String targetKey = TargetKeyResolver.resolve(ownerUUID);
-        String clueText = pickClue(player, playerData, targetKey, dexterity, lockpickStrength, sessionRisk);
+        String clueText = pickClue(player, playerData, targetKey, dexterity, lockpickStrength, sessionRisk, true);
         if (clueText == null) return;
 
         boolean hologramSpawned = trySpawnHologram(player, doorCanonical, doorCanonical, clueText);
@@ -79,13 +80,14 @@ public final class ClueDropper {
     }
 
     private static String pickClue(Player player, PlayerData playerData, String targetKey,
-            int dexterity, double lockpickStrength, double effectiveRisk) {
+            int dexterity, double lockpickStrength, double effectiveRisk, boolean criticalRisk) {
         net.tfminecraft.RPCharacters.Objects.PlayerData rpData = PlayerManager.get(player);
         if (rpData == null || !rpData.hasActiveCharacter()) return null;
 
         RPCharacter character = rpData.getActiveCharacter();
-        double criticalChance = RiskCalculator.computeCritical(
-                effectiveRisk, dexterity, lockpickStrength);
+        double criticalChance = criticalRisk
+                ? RiskCalculator.computeCritical(effectiveRisk, dexterity, lockpickStrength)
+                : 0.0;
         if (Math.random() < criticalChance && !playerData.isCriticalOnCooldown(targetKey)) {
             playerData.recordCriticalClue(targetKey);
             return Cache.criticalClue.replace("{character_name}", character.getName());

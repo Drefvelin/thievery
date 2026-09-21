@@ -18,16 +18,21 @@ public class ChestLockpickSession extends HiddenStealSession {
     private final Block chestBlock;
     private final LockpickDefinition lockpickDef;
     private final double successChance;
+    private final LockTypeProfile lockType;
     private int successfulClueDrops;
     private boolean lockpickBroken;
 
     public ChestLockpickSession(UUID thiefId, Block chestBlock, LockpickDefinition lockpickDef, double successChance,
-            Inventory chestInventory, String targetKey) {
-        super(new StealBudget(lockpickDef.getCapacity()), StealGui.Layout.create(chestInventory.getSize()), targetKey);
+            Inventory chestInventory, String targetKey, LockTypeProfile lockType) {
+        super(new StealBudget(lockpickDef.getCapacity() * (lockType == null
+                ? LockTypeProfile.IDENTITY.budgetMultiplier()
+                : lockType.budgetMultiplier())),
+                StealGui.Layout.create(chestInventory.getSize()), targetKey);
         this.thiefId = thiefId;
         this.chestBlock = chestBlock;
         this.lockpickDef = lockpickDef;
         this.successChance = successChance;
+        this.lockType = lockType == null ? LockTypeProfile.IDENTITY : lockType;
     }
 
     public UUID getThiefId() {
@@ -77,18 +82,22 @@ public class ChestLockpickSession extends HiddenStealSession {
         return successChance;
     }
 
+    public LockTypeProfile getLockType() {
+        return lockType;
+    }
+
     public int getNextRevealAttempt() {
         return getRevealedGuiSlots().size() + 1;
     }
 
     public double getNextRevealBreakChance() {
-        return DoorLockpick.computeRampedBreakChance(successChance, getNextRevealAttempt(),
+        double ramped = DoorLockpick.computeRampedBreakChance(successChance, getNextRevealAttempt(),
                 Parameters.chestBreakChanceRampPerSlot);
+        return Math.min(1.0, ramped * lockType.breakChanceMultiplier());
     }
 
     public double getNextRevealSuccessChance() {
-        return DoorLockpick.computeRampedSuccessChance(successChance, getNextRevealAttempt(),
-                Parameters.chestBreakChanceRampPerSlot);
+        return 1.0 - getNextRevealBreakChance();
     }
 
     public boolean isLockpickBroken() {

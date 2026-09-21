@@ -141,6 +141,17 @@ lockpicking:
     base-success-chance: 1.0
     break-chance-ramp-per-slot: 0.1
 
+  # Multipliers on the chest steal bases. Omitted keys stay at 1.0, and critical-risk stays on.
+  lock-types:
+    private: {}
+    guild: {}
+    faction:
+      budget-multiplier: 3.0
+      risk-multiplier: 0.5
+      critical-risk: false
+      break-chance-multiplier: 0.5
+    public: {}
+
 robbery:
   traits:
     - bandit

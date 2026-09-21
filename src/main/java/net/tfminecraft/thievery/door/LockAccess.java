@@ -37,6 +37,15 @@ public final class LockAccess {
         if (ownerGuild == null || openerGuild == null) {
             return false;
         }
-        return ownerGuild.getId().equals(openerGuild.getId());
+        if (lockState == LockState.GUILD) {
+            return ownerGuild.getId().equals(openerGuild.getId());
+        }
+        if (lockState == LockState.FACTION) {
+            if (ownerGuild.getFaction() == null || openerGuild.getFaction() == null) {
+                return false;
+            }
+            return ownerGuild.getFaction().getId().equals(openerGuild.getFaction().getId());
+        }
+        return false;
     }
 }

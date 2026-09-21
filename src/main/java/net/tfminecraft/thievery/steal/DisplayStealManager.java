@@ -40,6 +40,7 @@ import net.tfminecraft.thievery.database.Database;
 import net.tfminecraft.thievery.door.DoorLockpick;
 import net.tfminecraft.thievery.door.EntityLockData;
 import net.tfminecraft.thievery.door.EntityLockDataManager;
+import net.tfminecraft.thievery.door.FactionLockTutorial;
 import net.tfminecraft.thievery.door.LockAccess;
 import net.tfminecraft.thievery.door.LockPickManager;
 import net.tfminecraft.thievery.door.LockState;
@@ -71,6 +72,7 @@ public class DisplayStealManager implements Listener {
                 ThieveryTexts.msg(ThieveryTexts.ACCENT + "Lock State"),
                 ThieveryTexts.msg(ThieveryTexts.WARN + displayState), 5, 30, 10);
         player.playSound(player.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_OPEN, 1.0f, 1.0f);
+        FactionLockTutorial.onLockState(player, lockState);
     }
 
     static void notifyStaffBypass(Player player) {

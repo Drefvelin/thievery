@@ -3,6 +3,7 @@ package net.tfminecraft.thievery.door;
 public enum LockState {
     PRIVATE,
     GUILD,
+    FACTION,
     PUBLIC;
 
     public static final LockState DEFAULT = PUBLIC;
